@@ -15,11 +15,18 @@ import { canConfirmPreAuditDeadline } from "@/lib/jobs/deadline";
 import { STAGES, STAGE_LABELS, checkStageMove, needsReviewNote, stageLabel } from "@/lib/jobs/stages";
 import { hasRole } from "@/lib/permissions";
 import { VIEW_HOURLY_RATES, canSetJobBudget } from "@/lib/timecost/permissions";
-import { formatRinggit, jobTimecost } from "@/lib/timecost/timecost";
+import { compareToBudget, formatRinggit, jobTimecost } from "@/lib/timecost/timecost";
 import { BILLABLE_CATEGORIES } from "@/lib/timecost/utilisation";
-import { checkInAction, confirmPreAuditDeadlineAction, moveAuditStageAction, setJobBudgetAction } from "../actions";
+import { LOCK_LABELS, canAdvanceLock, nextLock } from "@/lib/timesheet/lock";
+import {
+  advanceTimesheetLockAction,
+  checkInAction,
+  confirmPreAuditDeadlineAction,
+  moveAuditStageAction,
+  setJobBudgetAction,
+} from "../actions";
 import { NotesSection } from "../../notes/notes-section";
-import { CheckInButton, JobBudgetForm, PreAuditDeadlineForm, StageMoveForm } from "../job-forms";
+import { CheckInButton, JobBudgetForm, PreAuditDeadlineForm, StageMoveForm, TimesheetLockButton } from "../job-forms";
 
 export const metadata: Metadata = { title: "Audit job" };
 
@@ -31,6 +38,8 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
     include: {
       client: { include: { signingPartners: true, assignedStaff: true } },
       preAuditDeadlineConfirmedBy: { select: { name: true } },
+      timesheetReviewedBy: { select: { name: true } },
+      timesheetBilledBy: { select: { name: true } },
       stageChanges: { orderBy: { at: "desc" }, include: { by: { select: { name: true } } } },
       checkIns: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
     },
@@ -48,21 +57,34 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
     orderBy: { createdAt: "asc" },
     select: { staffId: true, staff: { select: { name: true } } },
   });
-  const billable = await db.timesheetEntry.findMany({
-    where: { jobId: job.id, category: { in: [...BILLABLE_CATEGORIES] } },
-    select: { hours: true, staff: { select: { hourlyRate: true } } },
-  });
-  // Rates are live until timesheet locking freezes them (WORKFLOW.md §10).
-  const timecost = jobTimecost(
-    billable.map((row) => ({
-      hours: Number(row.hours),
-      rate: row.staff.hourlyRate === null ? null : Number(row.staff.hourlyRate),
-    })),
-    {
-      hours: job.budgetHours === null ? null : Number(job.budgetHours),
-      cost: job.budgetCost === null ? null : Number(job.budgetCost),
-    },
-  );
+  const budget = {
+    hours: job.budgetHours === null ? null : Number(job.budgetHours),
+    cost: job.budgetCost === null ? null : Number(job.budgetCost),
+  };
+  // Rates are live until the timesheet is reviewed, which freezes the timecost (WORKFLOW.md §10).
+  const frozen = job.timesheetLock !== "OPEN" && job.frozenHours !== null && job.frozenCost !== null;
+  const timecost = frozen
+    ? compareToBudget(
+        {
+          hours: Number(job.frozenHours),
+          cost: Number(job.frozenCost),
+          unratedHours: Number(job.frozenUnratedHours ?? 0),
+        },
+        budget,
+      )
+    : jobTimecost(
+        (
+          await db.timesheetEntry.findMany({
+            where: { jobId: job.id, category: { in: [...BILLABLE_CATEGORIES] } },
+            select: { hours: true, staff: { select: { hourlyRate: true } } },
+          })
+        ).map((row) => ({
+          hours: Number(row.hours),
+          rate: row.staff.hourlyRate === null ? null : Number(row.staff.hourlyRate),
+        })),
+        budget,
+      );
+  const lockTo = nextLock(job.timesheetLock);
   const showCost = hasRole(viewer.role, VIEW_HOURLY_RATES);
   const activity = lastActivity([job.createdAt, job.checkIns[0]?.createdAt, last?.at]) ?? job.createdAt;
 
@@ -140,6 +162,30 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="font-medium text-zinc-900">Timesheet lock</h2>
+        <p className="text-sm text-zinc-700">
+          Status: <strong>{LOCK_LABELS[job.timesheetLock]}</strong>
+          {job.timesheetLock === "OPEN" && <span className="text-zinc-500"> · entries can still be changed</span>}
+        </p>
+        {job.timesheetReviewedBy && job.timesheetReviewedAt && (
+          <p className="text-sm text-zinc-600">
+            Reviewed by {job.timesheetReviewedBy.name} at {formatDateTime(job.timesheetReviewedAt)}
+          </p>
+        )}
+        {job.timesheetBilledBy && job.timesheetBilledAt && (
+          <p className="text-sm text-zinc-600">
+            Billed by {job.timesheetBilledBy.name} at {formatDateTime(job.timesheetBilledAt)}
+          </p>
+        )}
+        {lockTo && canAdvanceLock(viewer, job.client, lockTo) && (
+          <TimesheetLockButton
+            action={advanceTimesheetLockAction.bind(null, job.id)}
+            label={lockTo === "REVIEWED" ? "Mark timesheet Reviewed (locks entries)" : "Mark timesheet Billed"}
+          />
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="font-medium text-zinc-900">Budget vs actual</h2>
         <table className="w-full max-w-2xl border-collapse bg-white text-left text-sm">
           <thead>
@@ -171,7 +217,10 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
             )}
           </tbody>
         </table>
-        <p className="text-sm text-zinc-600">Actual is Work and Overtime logged to this job. Training/CPD is excluded.</p>
+        <p className="text-sm text-zinc-600">
+          Actual is Work and Overtime logged to this job. Training/CPD is excluded.
+          {frozen && " Frozen when the timesheet was reviewed."}
+        </p>
         {showCost && timecost.unratedHours > 0 && (
           <p className="text-sm text-amber-700">
             {timecost.unratedHours} hours are from staff with no hourly rate and are not in the timecost.

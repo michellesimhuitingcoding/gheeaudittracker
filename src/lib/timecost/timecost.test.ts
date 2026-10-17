@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { jobTimecost } from "@/lib/timecost/timecost";
+import { compareToBudget, jobTimecost } from "@/lib/timecost/timecost";
 
 describe("jobTimecost", () => {
   it("multiplies hours by each person's rate", () => {
@@ -28,5 +28,19 @@ describe("jobTimecost", () => {
     const result = jobTimecost([{ hours: 10, rate: 100 }], { hours: 8, cost: 1200 });
     expect(result.hoursVariance).toBe(2);
     expect(result.costVariance).toBe(-200);
+  });
+});
+
+describe("compareToBudget", () => {
+  it("compares frozen figures with the budget", () => {
+    expect(compareToBudget({ hours: 12.5, cost: 900, unratedHours: 1 }, { hours: 10, cost: 1000 })).toEqual({
+      hours: 12.5,
+      cost: 900,
+      unratedHours: 1,
+      budgetHours: 10,
+      budgetCost: 1000,
+      hoursVariance: 2.5,
+      costVariance: -100,
+    });
   });
 });

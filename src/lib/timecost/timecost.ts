@@ -26,14 +26,20 @@ export function jobTimecost(
     if (entry.rate === null) unrated += cents(entry.hours);
     else cost += Math.round(entry.hours * entry.rate * 100);
   }
+  return compareToBudget({ hours: hours / 100, cost: cost / 100, unratedHours: unrated / 100 }, budget);
+}
+
+// Compares actual figures (live or frozen at timesheet lock) with the job budget.
+export function compareToBudget(
+  actual: { hours: number; cost: number; unratedHours: number },
+  budget: { hours: number | null; cost: number | null },
+): JobTimecost {
   return {
-    hours: hours / 100,
-    cost: cost / 100,
-    unratedHours: unrated / 100,
+    ...actual,
     budgetHours: budget.hours,
     budgetCost: budget.cost,
-    hoursVariance: budget.hours === null ? null : (hours - cents(budget.hours)) / 100,
-    costVariance: budget.cost === null ? null : (cost - cents(budget.cost)) / 100,
+    hoursVariance: budget.hours === null ? null : (cents(actual.hours) - cents(budget.hours)) / 100,
+    costVariance: budget.cost === null ? null : (cents(actual.cost) - cents(budget.cost)) / 100,
   };
 }
 
