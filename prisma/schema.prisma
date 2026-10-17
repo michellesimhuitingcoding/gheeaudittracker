@@ -43,6 +43,7 @@ model Staff {
   createdAuditJobs      AuditJob[]
   auditStageChanges     AuditStageChange[]
   timesheetEntries      TimesheetEntry[]
+  jobCheckIns           JobCheckIn[]
 }
 
 // WORKFLOW.md §9: who, when, what, from, to. Append-only — the database
@@ -205,6 +206,7 @@ model AuditJob {
 
   stageChanges     AuditStageChange[]
   timesheetEntries TimesheetEntry[]
+  checkIns         JobCheckIn[]
 
   @@unique([clientId, year])
   @@index([stage])
@@ -252,4 +254,18 @@ model TimesheetEntry {
 
   @@index([staffId, date])
   @@index([jobId])
+}
+
+// WORKFLOW.md §8: "I'm working on this today" — one per person per job per day (MYT).
+model JobCheckIn {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       AuditJob @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  staffId   String
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@unique([jobId, staffId, date])
+  @@index([jobId, createdAt])
 }

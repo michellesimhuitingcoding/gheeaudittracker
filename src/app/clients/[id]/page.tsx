@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ActivityBadge } from "@/components/activity-badge";
 import { NoPermission } from "@/components/no-permission";
 import { PageShell } from "@/components/page-shell";
+import { lastActivity } from "@/lib/checkin/activity";
 import {
   AUDIT_BY_LABELS,
   CLIENT_STATUS_LABELS,
@@ -56,7 +58,17 @@ async function ClientDetails({ params }: { params: Promise<{ id: string }> }) {
       signingPartners: { include: { partner: { select: { name: true } } } },
       assignedStaff: { include: { staff: { select: { name: true } } } },
       externalAuditors: { orderBy: { createdAt: "asc" } },
-      auditJobs: { orderBy: { year: "desc" }, select: { id: true, year: true, stage: true } },
+      auditJobs: {
+        orderBy: { year: "desc" },
+        select: {
+          id: true,
+          year: true,
+          stage: true,
+          createdAt: true,
+          checkIns: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
+          stageChanges: { orderBy: { at: "desc" }, take: 1, select: { at: true } },
+        },
+      },
     },
   });
   if (!client) notFound();
@@ -132,7 +144,12 @@ async function ClientDetails({ params }: { params: Promise<{ id: string }> }) {
                 <Link href={`/jobs/${job.id}`} className="underline">
                   FY {job.year}
                 </Link>{" "}
-                — {stageLabel(job.stage)}
+                — {stageLabel(job.stage)}{" "}
+                <ActivityBadge
+                  lastActivity={
+                    lastActivity([job.createdAt, job.checkIns[0]?.createdAt, job.stageChanges[0]?.at]) ?? job.createdAt
+                  }
+                />
               </li>
             ))}
           </ul>
