@@ -111,3 +111,27 @@ export function CheckInButton({ action, checkedIn }: { action: Action; checkedIn
     </form>
   );
 }
+
+export function PreAuditDeadlineForm({ action, current }: { action: Action; current: string | null }) {
+  const [state, onSubmit, pending] = useFormAction(action);
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
+      <label className={labelClass}>
+        Pre-audit deadline
+        <input name="preAuditDeadline" type="date" defaultValue={current ?? ""} required className={inputClass} />
+      </label>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+      >
+        {current ? "Update deadline" : "Confirm deadline"}
+      </button>
+      <div className="w-full">
+        <FieldError state={state} name="preAuditDeadline" />
+        <FormMessage state={state} />
+      </div>
+    </form>
+  );
+}

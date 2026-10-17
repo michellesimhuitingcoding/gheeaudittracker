@@ -53,6 +53,7 @@ const FIELD_LABELS: Record<string, string> = {
   progressNote: "Progress note",
   nextAction: "Next action",
   reviewNote: "Review note",
+  preAuditDeadline: "Pre-audit deadline",
   date: "Date",
   job: "Job",
   category: "Category",
