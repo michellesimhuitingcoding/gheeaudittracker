@@ -10,7 +10,7 @@ import {
 } from "@/lib/clients/permissions";
 
 const as = (role: Role, id = "me") => ({ id, role });
-const client = { ownerId: "owner", managerId: "mgr", partnerId: "ptr" };
+const client = { ownerId: "owner", managerId: "mgr", partnerId: "ptr", seniorId: "snr", assignedStaffIds: ["jnr"] };
 
 describe("client permissions", () => {
   it("lets intake roles add clients", () => {
@@ -45,9 +45,23 @@ describe("client permissions", () => {
     }
   });
 
-  it("does not yet give Junior and Senior the client list", () => {
-    expect(clientListFilter(as("JUNIOR"))).toBeNull();
-    expect(canViewClient(as("SENIOR"), client)).toBe(false);
+  it("shows Juniors and Seniors only clients they are assigned to", () => {
+    expect(canViewClient(as("SENIOR", "snr"), client)).toBe(true);
+    expect(canViewClient(as("JUNIOR", "jnr"), client)).toBe(true);
+    expect(canViewClient(as("JUNIOR", "other"), client)).toBe(false);
+    expect(canViewClient(as("SENIOR", "other"), client)).toBe(false);
+    expect(clientListFilter(as("JUNIOR", "jnr"))).toEqual({
+      OR: [{ seniorId: "jnr" }, { assignedStaff: { some: { staffId: "jnr" } } }],
+    });
+    expect(clientListFilter(as("SENIOR", "snr"), { mine: false })).toEqual(clientListFilter(as("SENIOR", "snr")));
+  });
+
+  it("narrows Partners to their own clients only when asked", () => {
+    expect(clientListFilter(as("PARTNER", "ptr"))).toEqual({});
+    expect(clientListFilter(as("PARTNER", "ptr"), { mine: true })).toEqual({
+      OR: [{ partnerId: "ptr" }, { ownerId: "ptr" }],
+    });
+    expect(clientListFilter(as("ADMIN"), { mine: true })).toEqual({});
   });
 
   it("keeps owner and payment status changes to Admin and Master Admin", () => {

@@ -18,15 +18,19 @@ export async function clientPeopleOptions(current?: {
   ownerId: string;
   managerId: string | null;
   partnerId: string | null;
+  seniorId: string | null;
   signingPartnerIds: string[];
+  assignedStaffIds: string[];
 }) {
-  const [owners, managers, partners, signingPartners] = await Promise.all([
+  const [owners, managers, partners, signingPartners, seniors, assignable] = await Promise.all([
     peopleWithRoles(["MANAGER", "PARTNER"], [current?.ownerId]),
     peopleWithRoles(["MANAGER"], [current?.managerId]),
     peopleWithRoles(["PARTNER"], [current?.partnerId]),
     peopleWithRoles(["PARTNER"], current?.signingPartnerIds ?? []),
+    peopleWithRoles(["SENIOR"], [current?.seniorId]),
+    peopleWithRoles(["JUNIOR", "SENIOR"], current?.assignedStaffIds ?? []),
   ]);
-  return { owners, managers, partners, signingPartners };
+  return { owners, managers, partners, signingPartners, seniors, assignable };
 }
 
 export type ClientPeopleOptions = Awaited<ReturnType<typeof clientPeopleOptions>>;

@@ -38,6 +38,8 @@ model Staff {
   managedClients        Client[]               @relation("ClientManager")
   partneredClients      Client[]               @relation("ClientPartner")
   signingPartnerClients ClientSigningPartner[]
+  seniorClients         Client[]               @relation("ClientSenior")
+  assignedClients       ClientAssignedStaff[]
 }
 
 // WORKFLOW.md §9: who, when, what, from, to. Append-only — the database
@@ -110,6 +112,8 @@ model Client {
   manager           Staff?        @relation("ClientManager", fields: [managerId], references: [id], onDelete: Restrict)
   partnerId         String?
   partner           Staff?        @relation("ClientPartner", fields: [partnerId], references: [id], onDelete: Restrict)
+  seniorId          String?
+  senior            Staff?        @relation("ClientSenior", fields: [seniorId], references: [id], onDelete: Restrict)
   services          Service[]
   dormant           Boolean       @default(false)
   status            ClientStatus  @default(ACTIVE)
@@ -124,12 +128,14 @@ model Client {
   updatedAt         DateTime      @updatedAt
 
   signingPartners  ClientSigningPartner[]
+  assignedStaff    ClientAssignedStaff[]
   externalAuditors ExternalAuditor[]
 
   @@index([name])
   @@index([managerId])
   @@index([partnerId])
   @@index([ownerId])
+  @@index([seniorId])
 }
 
 // Partners (staff with login) who sign the client's audit report.
@@ -140,6 +146,17 @@ model ClientSigningPartner {
   partner   Staff  @relation(fields: [partnerId], references: [id], onDelete: Restrict)
 
   @@id([clientId, partnerId])
+}
+
+// Juniors and Seniors assigned to (or assisting on) the client's work.
+model ClientAssignedStaff {
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  staffId  String
+  staff    Staff  @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@id([clientId, staffId])
+  @@index([staffId])
 }
 
 // Outside audit firms — recorded only, they never log in.

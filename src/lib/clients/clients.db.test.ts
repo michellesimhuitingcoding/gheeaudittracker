@@ -181,3 +181,38 @@ describe("clients (database)", () => {
     expect(await addExternalAuditor(junior, id, { firmName: "Nope" })).toMatchObject({ ok: false });
   });
 });
+
+describe("client visibility (database)", () => {
+  it("lists only assigned clients for Juniors and Seniors, and own clients for Partners when asked", async () => {
+    const { clientListFilter } = await import("@/lib/clients/permissions");
+    const senior = await staff("SENIOR", "Sam Senior");
+    const jr = await staff("JUNIOR", "Jo Junior");
+    const assigned = await newClient({ seniorId: senior.id, assignedStaffIds: [jr.id], partnerId: partner2.id });
+    const notAssigned = await newClient();
+
+    const visibleTo = async (viewer: { id: string; role: Role }, mine = false) => {
+      const where = clientListFilter(viewer, { mine })!;
+      const rows = await db.client.findMany({
+        where: { AND: [where, { id: { in: [assigned.id, notAssigned.id] } }] },
+        select: { id: true },
+      });
+      return rows.map((row) => row.id).sort();
+    };
+
+    expect(await visibleTo(senior)).toEqual([assigned.id]);
+    expect(await visibleTo(jr)).toEqual([assigned.id]);
+    expect(await visibleTo(partner2, true)).toEqual([assigned.id]);
+    expect(await visibleTo(partner2)).toEqual([assigned.id, notAssigned.id].sort());
+  });
+
+  it("requires a Senior for the senior field and Juniors/Seniors as assigned staff", async () => {
+    const result = await createClient(intake, clientInput({ seniorId: junior.id, assignedStaffIds: [manager.id] }));
+    expect(result).toMatchObject({
+      ok: false,
+      fieldErrors: {
+        seniorId: ["Senior must be an active Senior."],
+        assignedStaffIds: ["Assigned staff must be active Juniors or Seniors."],
+      },
+    });
+  });
+});

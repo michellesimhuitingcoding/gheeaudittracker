@@ -24,6 +24,8 @@ const FIELD_LABELS: Record<string, string> = {
   owner: "Sourced by",
   manager: "Manager",
   partner: "Partner",
+  senior: "Senior",
+  assignedStaff: "Assigned staff",
   signingPartners: "Signing partners",
   services: "Services",
   auditBy: "Audit by",

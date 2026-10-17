@@ -47,12 +47,15 @@ async function ClientDetails({ params }: { params: Promise<{ id: string }> }) {
       owner: { select: { name: true } },
       manager: { select: { name: true } },
       partner: { select: { name: true } },
+      senior: { select: { name: true } },
       signingPartners: { include: { partner: { select: { name: true } } } },
+      assignedStaff: { include: { staff: { select: { name: true } } } },
       externalAuditors: { orderBy: { createdAt: "asc" } },
     },
   });
   if (!client) notFound();
-  if (!canViewClient(viewer, client)) return <NoPermission />;
+  const assignedStaffIds = client.assignedStaff.map((row) => row.staffId);
+  if (!canViewClient(viewer, { ...client, assignedStaffIds })) return <NoPermission />;
 
   const lastChange = await db.auditLog.findFirst({
     where: { entityType: "Client", entityId: client.id },
@@ -73,8 +76,13 @@ async function ClientDetails({ params }: { params: Promise<{ id: string }> }) {
       {editable ? (
         <ClientForm
           action={updateClientAction.bind(null, client.id)}
-          values={{ ...client, incorporationDate: dateOnly(client.incorporationDate), signingPartnerIds }}
-          people={await clientPeopleOptions({ ...client, signingPartnerIds })}
+          values={{
+            ...client,
+            incorporationDate: dateOnly(client.incorporationDate),
+            signingPartnerIds,
+            assignedStaffIds,
+          }}
+          people={await clientPeopleOptions({ ...client, signingPartnerIds, assignedStaffIds })}
           ownerLocked={!canChangeOwner(viewer)}
           canEditPayment={canChangePaymentStatus(viewer)}
           submitLabel="Save changes"
@@ -89,6 +97,8 @@ async function ClientDetails({ params }: { params: Promise<{ id: string }> }) {
           <Detail label="Sourced by" value={client.owner.name} />
           <Detail label="Manager" value={client.manager?.name} />
           <Detail label="Partner" value={client.partner?.name} />
+          <Detail label="Senior" value={client.senior?.name} />
+          <Detail label="Assigned staff" value={client.assignedStaff.map((row) => row.staff.name).join(", ")} />
           <Detail label="Services" value={client.services.map((service) => SERVICE_LABELS[service]).join(", ")} />
           <Detail label="Status" value={CLIENT_STATUS_LABELS[client.status]} />
           <Detail label="Payment status" value={PAYMENT_STATUS_LABELS[client.paymentStatus]} />
