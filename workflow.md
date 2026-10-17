@@ -160,51 +160,15 @@ Retention: 7 years (MIA minimum is 6)
 - Exception tracking (stage skip with reason + approver)
 - Review notes mandatory at stages 5, 6
 - Retention 7 years (exceeds MIA 6-year minimum)
-- ISQM: Independence, SoQM, File Inspection, Consultation, Concern, Snapshot, Deficiency gate, Notes
 
-## 14. ISQM Module
-
-**Independence:**
-- Annual firm-wide declaration (January)
-- Per-engagement confirmation (audit clients only)
-- Batch confirm option
-- Threat declaration → Partner evaluates
-
-**SoQM Evaluation:**
-- 8 ISQM 1 components
-- Evidence auto-pulled
-- Deficiency gate blocks sign-off (option B — plan in place)
-- Immutable snapshot on sign-off
-- Post-finalisation notes (append-only)
-- ISQM Partner rotation (annual)
-
-**File Inspection:**
-- Auto-assigned each year (most overdue Partner)
-- Inspector = Partner/Manager not on engagement
-- 5 review areas
-- Findings → SoQM remediation
-
-**Consultation Log:**
-- Event-driven (only when needed)
-- Partner sign-off required
-
-**Raise Concern:**
-- Any staff can raise
-- Blocks Finalisation until resolved
-
-**Partner ISQM Dashboard:**
-- 5 tiles: Independence, Acceptance, SoQM, File Inspection, Remediation
-- Click to drill down
-
-## 15. CPD
+## 14. CPD
 - AAM records training sessions
 - Auto-credit attendees
 - MIA members: 40h target (auto)
 - Non-MIA: Master Admin sets per staff
 - Timesheet "Training/CPD" category = information only
-- Feeds ISQM Resources evidence
 
-## 16. Collections
+## 15. Collections
 - Outstanding = invoice − payments received
 - Due date = invoice date + credit term (30 days default)
 - Aging buckets
@@ -212,7 +176,7 @@ Retention: 7 years (MIA minimum is 6)
 - 365+ rule: monthly alert + Partner explanation
 - Manager My Progress + Partner Firm Overview sections
 
-## 17. Commission Model (Phase 2)
+## 16. Commission Model (Phase 2)
 - Audit 16%, Tax 20%, Secretarial 3%, Bookkeeping 10/20%
 - Bookkeeping: staff 70% / outsourced 60% of invoice
 - Pool split negotiated per client
@@ -222,7 +186,7 @@ Retention: 7 years (MIA minimum is 6)
 - Partner: only on personally-sourced clients
 - Visibility: own line only
 
-## 18. Tax Forms
+## 17. Tax Forms
 - Form C (Sdn Bhd, PLT) — FYE + 7 months
 - Form P (Partnership) — 30 Jun / 15 Jul
 - Form B (Enterprise, Individual) — 30 Jun / 15 Jul
@@ -231,16 +195,17 @@ Retention: 7 years (MIA minimum is 6)
 - Form EA (Employee) — end February
 - CP204/CP204A — 30 days before basis period
 
-## 19. Collections (10 total)
+## 18. Collections (10 total)
 portfolios, jobs (includes progress), timesheet, staff, settings, billing, payments, auditlog, queries
 
-## 20. Excluded
+## 19. Excluded
 - No file upload (cloud later)
 - No AMLA / KYC (manual)
 - No client portal
 - No mobile (desktop now, responsive later)
+- ISQM module — handled separately in ABOT system, out of scope here
 
-## 21. Build Phases
+## 20. Build Phases
 
 **Phase 1 (I build — 6 weeks):**
 - Login + 5 roles
@@ -262,7 +227,6 @@ portfolios, jobs (includes progress), timesheet, staff, settings, billing, payme
 - Role-based visibility
 
 **Phase 2 (friend builds — 6 weeks):**
-- ISQM (all 9 features)
 - Collections + aging
 - CPD via AAM
 - Calendar (unified)
@@ -273,3 +237,12 @@ portfolios, jobs (includes progress), timesheet, staff, settings, billing, payme
 - All remaining roles
 - Commission model
 - Server-enforced permissions
+
+**Out of scope (ABOT system):**
+- ISQM Independence
+- SoQM Evaluation
+- File Inspection
+- Consultation Log
+- Raise Concern
+- Partner ISQM Dashboard
+- ISQM Deficiency gate
