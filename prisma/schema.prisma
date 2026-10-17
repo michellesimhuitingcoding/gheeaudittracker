@@ -42,6 +42,7 @@ model Staff {
   assignedClients       ClientAssignedStaff[]
   createdAuditJobs      AuditJob[]
   auditStageChanges     AuditStageChange[]
+  timesheetEntries      TimesheetEntry[]
 }
 
 // WORKFLOW.md §9: who, when, what, from, to. Append-only — the database
@@ -202,7 +203,8 @@ model AuditJob {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  stageChanges AuditStageChange[]
+  stageChanges     AuditStageChange[]
+  timesheetEntries TimesheetEntry[]
 
   @@unique([clientId, year])
   @@index([stage])
@@ -224,4 +226,30 @@ model AuditStageChange {
   reviewNote   String?
 
   @@index([jobId, at])
+}
+
+// WORKFLOW.md §10 timesheet categories. Training/CPD is information only.
+enum TimesheetCategory {
+  WORK
+  OT
+  TRAINING_CPD
+}
+
+// WORKFLOW.md §10: daily time logged by staff. Separate from stage-gate hours.
+model TimesheetEntry {
+  id        String            @id @default(cuid())
+  staffId   String
+  staff     Staff             @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  // Required for Work and OT; null for Training/CPD.
+  jobId     String?
+  job       AuditJob?         @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  date      DateTime          @db.Date
+  hours     Decimal           @db.Decimal(4, 2)
+  category  TimesheetCategory
+  note      String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([staffId, date])
+  @@index([jobId])
 }
