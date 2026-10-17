@@ -5,6 +5,9 @@ import { diffFields, recordAudit } from "@/lib/audit";
 import { canViewClient } from "@/lib/clients/permissions";
 import { db } from "@/lib/db";
 import type { FormState } from "@/lib/form-state";
+import { jobTimecost } from "@/lib/timecost/timecost";
+import { BILLABLE_CATEGORIES } from "@/lib/timecost/utilisation";
+import { LOCK_LABELS, canAdvanceLock, nextLock } from "@/lib/timesheet/lock";
 import { CATEGORY_LABELS, timesheetCategories } from "@/lib/timesheet/permissions";
 import { MAX_HOURS_PER_DAY, type TimesheetEntryInput, timesheetEntrySchema } from "@/lib/timesheet/schema";
 
@@ -18,6 +21,8 @@ function invalid(error: z.ZodError): Result {
 
 const isoDate = (date: Date) => date.toISOString().slice(0, 10);
 
+const LOCKED = "This job's timesheet is locked.";
+
 // The job's display name, or an error if the actor may not log time to it.
 async function loggableJob(tx: Tx, actor: Actor, jobId: string): Promise<{ name: string } | { error: string }> {
   const job = await tx.auditJob.findUnique({
@@ -29,6 +34,7 @@ async function loggableJob(tx: Tx, actor: Actor, jobId: string): Promise<{ name:
   if (!canViewClient(actor, { ...job.client, assignedStaffIds })) {
     return { error: "You cannot log time to this job." };
   }
+  if (job.timesheetLock !== "OPEN") return { error: LOCKED };
   return { name: `${job.client.name} · FY ${job.year}` };
 }
 
@@ -107,6 +113,7 @@ export async function updateTimesheetEntry(actor: Actor, entryId: string, input:
     if (!existing || existing.staffId !== actor.id) {
       return { ok: false, error: "You can only change your own timesheet entries." };
     }
+    if (existing.job && existing.job.timesheetLock !== "OPEN") return { ok: false, error: LOCKED };
     const check = await checkEntry(tx, actor, entry, entryId);
     if ("ok" in check) return check;
 
@@ -148,6 +155,7 @@ export async function removeTimesheetEntry(actor: Actor, entryId: string): Promi
     if (!existing || existing.staffId !== actor.id) {
       return { ok: false, error: "You can only remove your own timesheet entries." };
     }
+    if (existing.job && existing.job.timesheetLock !== "OPEN") return { ok: false, error: LOCKED };
 
     await tx.timesheetEntry.delete({ where: { id: entryId } });
     await recordAudit(tx, {
@@ -164,5 +172,75 @@ export async function removeTimesheetEntry(actor: Actor, entryId: string): Promi
       },
     });
     return { ok: true, message: "Entry removed." };
-  });
+  }, serializable);
+}
+
+// WORKFLOW.md §10: moves the job's timesheet one step along Open → Reviewed → Billed.
+// Reviewing freezes the timecost at the hourly rates in force at that moment.
+export async function advanceTimesheetLock(actor: Actor, jobId: string): Promise<Result> {
+  return db.$transaction(async (tx) => {
+    const job = await tx.auditJob.findUnique({
+      where: { id: jobId },
+      select: { timesheetLock: true, client: { select: { managerId: true, partnerId: true } } },
+    });
+    if (!job) return { ok: false, error: "Audit job not found." };
+    const to = nextLock(job.timesheetLock);
+    if (!to) return { ok: false, error: "This job's timesheet is already billed." };
+    if (!canAdvanceLock(actor, job.client, to)) {
+      return {
+        ok: false,
+        error:
+          to === "REVIEWED"
+            ? "Only the client's Manager or Partner can mark the timesheet Reviewed."
+            : "Only the client's Manager or Partner, or an Admin, can mark the timesheet Billed.",
+      };
+    }
+
+    const now = new Date();
+    const changes: Record<string, unknown> = {
+      timesheetLock: { from: LOCK_LABELS[job.timesheetLock], to: LOCK_LABELS[to] },
+    };
+    if (to === "REVIEWED") {
+      const entries = await tx.timesheetEntry.findMany({
+        where: { jobId, category: { in: [...BILLABLE_CATEGORIES] } },
+        select: { hours: true, staff: { select: { hourlyRate: true } } },
+      });
+      const frozen = jobTimecost(
+        entries.map((row) => ({
+          hours: Number(row.hours),
+          rate: row.staff.hourlyRate === null ? null : Number(row.staff.hourlyRate),
+        })),
+        { hours: null, cost: null },
+      );
+      await tx.auditJob.update({
+        where: { id: jobId },
+        data: {
+          timesheetLock: to,
+          timesheetReviewedById: actor.id,
+          timesheetReviewedAt: now,
+          frozenHours: frozen.hours.toFixed(2),
+          frozenCost: frozen.cost.toFixed(2),
+          frozenUnratedHours: frozen.unratedHours.toFixed(2),
+        },
+      });
+      Object.assign(changes, {
+        frozenHours: frozen.hours.toFixed(2),
+        frozenCost: frozen.cost.toFixed(2),
+        frozenUnratedHours: frozen.unratedHours.toFixed(2),
+      });
+    } else {
+      await tx.auditJob.update({
+        where: { id: jobId },
+        data: { timesheetLock: to, timesheetBilledById: actor.id, timesheetBilledAt: now },
+      });
+    }
+    await recordAudit(tx, {
+      action: to === "REVIEWED" ? "TIMESHEET_REVIEWED" : "TIMESHEET_BILLED",
+      actorId: actor.id,
+      entityType: "AuditJob",
+      entityId: jobId,
+      changes,
+    });
+    return { ok: true, message: `Timesheet marked ${LOCK_LABELS[to]}.` };
+  }, serializable);
 }

@@ -2,7 +2,12 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { Role } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
-import { addTimesheetEntry, removeTimesheetEntry, updateTimesheetEntry } from "@/lib/timesheet/service";
+import {
+  addTimesheetEntry,
+  advanceTimesheetLock,
+  removeTimesheetEntry,
+  updateTimesheetEntry,
+} from "@/lib/timesheet/service";
 
 type Person = { id: string; role: Role };
 const tag = () => randomUUID().slice(0, 8);
@@ -99,5 +104,55 @@ describe("timesheet (database)", () => {
     expect(
       await db.auditLog.findFirst({ where: { action: "TIMESHEET_ENTRY_REMOVED", entityId: own.id } }),
     ).not.toBeNull();
+  });
+
+  it("locks the timesheet Open → Reviewed → Billed and freezes the timecost", async () => {
+    const client = await db.client.create({
+      data: {
+        name: `Lock Co ${tag()}`,
+        entityType: "SDN_BHD",
+        fyeDay: 31,
+        fyeMonth: 12,
+        ownerId: manager.id,
+        managerId: manager.id,
+        partnerId: partner.id,
+        seniorId: senior.id,
+        services: ["AUDIT"],
+      },
+    });
+    const job = await db.auditJob.create({ data: { clientId: client.id, year: 2025, createdById: manager.id } });
+    await db.staff.update({ where: { id: senior.id }, data: { hourlyRate: "50.00" } });
+    const lockEntry = (extra: Record<string, unknown> = {}) => entry({ jobId: job.id, date: "2026-02-02", ...extra });
+    expect(await addTimesheetEntry(senior, lockEntry({ hours: "4" }))).toMatchObject({ ok: true });
+    const logged = await db.timesheetEntry.findFirstOrThrow({ where: { staffId: senior.id, jobId: job.id } });
+
+    expect(await advanceTimesheetLock(admin, job.id)).toMatchObject({ ok: false });
+    expect(await advanceTimesheetLock(senior, job.id)).toMatchObject({ ok: false });
+    expect(await advanceTimesheetLock(manager, job.id)).toEqual({ ok: true, message: "Timesheet marked Reviewed." });
+
+    const reviewed = await db.auditJob.findUniqueOrThrow({ where: { id: job.id } });
+    expect(reviewed.timesheetLock).toBe("REVIEWED");
+    expect(reviewed.timesheetReviewedById).toBe(manager.id);
+    expect(reviewed.frozenHours?.toString()).toBe("4");
+    expect(reviewed.frozenCost?.toString()).toBe("200");
+    const audit = await db.auditLog.findFirstOrThrow({ where: { action: "TIMESHEET_REVIEWED", entityId: job.id } });
+    expect(audit.changes).toMatchObject({ timesheetLock: { from: "Open", to: "Reviewed" }, frozenCost: "200.00" });
+
+    const locked = { ok: false, error: "This job's timesheet is locked." };
+    expect(await addTimesheetEntry(senior, lockEntry({ hours: "1" }))).toMatchObject({
+      ok: false,
+      fieldErrors: { jobId: [locked.error] },
+    });
+    expect(await updateTimesheetEntry(senior, logged.id, lockEntry({ hours: "6" }))).toEqual(locked);
+    expect(await removeTimesheetEntry(senior, logged.id)).toEqual(locked);
+
+    // A later rate change does not move the frozen timecost.
+    await db.staff.update({ where: { id: senior.id }, data: { hourlyRate: "80.00" } });
+    expect(await advanceTimesheetLock(admin, job.id)).toEqual({ ok: true, message: "Timesheet marked Billed." });
+    const billed = await db.auditJob.findUniqueOrThrow({ where: { id: job.id } });
+    expect(billed.timesheetLock).toBe("BILLED");
+    expect(billed.timesheetBilledById).toBe(admin.id);
+    expect(billed.frozenCost?.toString()).toBe("200");
+    expect(await advanceTimesheetLock(manager, job.id)).toMatchObject({ ok: false });
   });
 });

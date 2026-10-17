@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { todayInMyt } from "@/lib/format";
 import { monthToDateUtilisation } from "@/lib/timecost/service";
 import { CATEGORY_LABELS, timesheetCategories } from "@/lib/timesheet/permissions";
+import { LOCK_LABELS } from "@/lib/timesheet/lock";
 import { addTimesheetEntryAction, removeTimesheetEntryAction, updateTimesheetEntryAction } from "./actions";
 import { EntryForm, RemoveEntryButton } from "./timesheet-forms";
 
@@ -42,7 +43,7 @@ async function Timesheet({ searchParams }: { searchParams: Promise<Search> }) {
   const [jobs, entries, utilisation] = await Promise.all([
     clientFilter
       ? db.auditJob.findMany({
-          where: { client: clientFilter },
+          where: { client: clientFilter, timesheetLock: "OPEN" },
           orderBy: [{ client: { name: "asc" } }, { year: "desc" }],
           select: { id: true, year: true, client: { select: { name: true } } },
         })
@@ -50,7 +51,7 @@ async function Timesheet({ searchParams }: { searchParams: Promise<Search> }) {
     db.timesheetEntry.findMany({
       where: { staffId: viewer.id, date: new Date(`${date}T00:00:00Z`) },
       orderBy: { createdAt: "asc" },
-      include: { job: { select: { year: true, client: { select: { name: true } } } } },
+      include: { job: { select: { year: true, timesheetLock: true, client: { select: { name: true } } } } },
     }),
     // Partners log overtime only, so utilisation does not apply to them.
     viewer.role === "PARTNER" ? null : monthToDateUtilisation([viewer.id]).then((rows) => rows.get(viewer.id)!),
@@ -126,27 +127,31 @@ async function Timesheet({ searchParams }: { searchParams: Promise<Search> }) {
                 <td className="p-3">{entry.hours.toString()}</td>
                 <td className="whitespace-pre-wrap p-3">{entry.note ?? "—"}</td>
                 <td className="p-3">
-                  <div className="flex flex-col gap-2">
-                    <details>
-                      <summary className="cursor-pointer text-sm underline">Edit</summary>
-                      <div className="pt-3">
-                        <EntryForm
-                          action={updateTimesheetEntryAction.bind(null, entry.id)}
-                          date={date}
-                          jobs={jobOptions}
-                          categories={categoryOptions}
-                          defaults={{
-                            category: entry.category,
-                            jobId: entry.jobId ?? "",
-                            hours: entry.hours.toString(),
-                            note: entry.note ?? "",
-                          }}
-                          submitLabel="Save"
-                        />
-                      </div>
-                    </details>
-                    <RemoveEntryButton action={removeTimesheetEntryAction.bind(null, entry.id)} />
-                  </div>
+                  {entry.job && entry.job.timesheetLock !== "OPEN" ? (
+                    <span className="text-sm text-zinc-500">Locked ({LOCK_LABELS[entry.job.timesheetLock]})</span>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <details>
+                        <summary className="cursor-pointer text-sm underline">Edit</summary>
+                        <div className="pt-3">
+                          <EntryForm
+                            action={updateTimesheetEntryAction.bind(null, entry.id)}
+                            date={date}
+                            jobs={jobOptions}
+                            categories={categoryOptions}
+                            defaults={{
+                              category: entry.category,
+                              jobId: entry.jobId ?? "",
+                              hours: entry.hours.toString(),
+                              note: entry.note ?? "",
+                            }}
+                            submitLabel="Save"
+                          />
+                        </div>
+                      </details>
+                      <RemoveEntryButton action={removeTimesheetEntryAction.bind(null, entry.id)} />
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

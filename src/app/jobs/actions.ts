@@ -9,6 +9,7 @@ import { stageChangeFormValues } from "@/lib/jobs/schema";
 import { createAuditJob, moveAuditStage } from "@/lib/jobs/service";
 import { formText } from "@/lib/timecost/schema";
 import { setJobBudget } from "@/lib/timecost/service";
+import { advanceTimesheetLock } from "@/lib/timesheet/service";
 
 export async function createAuditJobAction(clientId: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const actor = await requireStaff();
@@ -58,5 +59,15 @@ export async function setJobBudgetAction(jobId: string, _prev: FormState, formDa
     budgetCost: formText(formData, "budgetCost"),
   });
   if (result.ok) revalidatePath(`/jobs/${jobId}`);
+  return result;
+}
+
+export async function advanceTimesheetLockAction(jobId: string): Promise<FormState> {
+  const actor = await requireStaff();
+  const result = await advanceTimesheetLock(actor, jobId);
+  if (result.ok) {
+    revalidatePath(`/jobs/${jobId}`);
+    revalidatePath("/timesheet");
+  }
   return result;
 }

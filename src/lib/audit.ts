@@ -17,6 +17,8 @@ export const AUDIT_ACTIONS = {
   TIMESHEET_ENTRY_ADDED: "Logged time",
   TIMESHEET_ENTRY_UPDATED: "Changed logged time",
   TIMESHEET_ENTRY_REMOVED: "Removed logged time",
+  TIMESHEET_REVIEWED: "Marked timesheet reviewed",
+  TIMESHEET_BILLED: "Marked timesheet billed",
   JOB_CHECKED_IN: "Checked in to job",
   INTERNAL_NOTE_ADDED: "Added internal note",
   HOURLY_RATE_CHANGED: "Changed hourly rate",
