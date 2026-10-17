@@ -19,6 +19,9 @@ async function CurrentStaff() {
           <Link href="/clients" className="underline">
             Clients
           </Link>
+          <Link href="/jobs" className="underline">
+            Jobs board
+          </Link>
           <Link href="/calendar" className="underline">
             Calendar
           </Link>
