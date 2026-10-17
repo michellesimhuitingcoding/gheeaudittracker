@@ -23,6 +23,7 @@ const FIELD_LABELS: Record<string, string> = {
   email: "Email",
   role: "Role",
   active: "Status",
+  lastDay: "Last day",
   entityType: "Entity type",
   regNo: "Registration no.",
   tin: "TIN",

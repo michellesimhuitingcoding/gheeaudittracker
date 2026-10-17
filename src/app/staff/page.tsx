@@ -5,27 +5,32 @@ import { NoPermission } from "@/components/no-permission";
 import { PageShell } from "@/components/page-shell";
 import { requireStaff } from "@/lib/current-staff";
 import { db } from "@/lib/db";
+import { formatDate } from "@/lib/deadlines";
+import { hasRole } from "@/lib/permissions";
+import { RECORD_LAST_DAY } from "@/lib/resignation/schema";
 import { ROLE_LABELS } from "@/lib/roles";
 
 export const metadata: Metadata = { title: "Staff" };
 
 async function StaffList() {
   const actor = await requireStaff();
-  if (actor.role !== "MASTER_ADMIN") return <NoPermission />;
+  if (!hasRole(actor.role, RECORD_LAST_DAY)) return <NoPermission />;
 
   const staff = await db.staff.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, staffId: true, name: true, email: true, role: true, active: true },
+    select: { id: true, staffId: true, name: true, email: true, role: true, active: true, lastDay: true },
   });
 
   return (
     <div className="flex flex-col gap-4">
-      <Link
-        href="/staff/new"
-        className="self-start rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white"
-      >
-        Add staff
-      </Link>
+      {actor.role === "MASTER_ADMIN" && (
+        <Link
+          href="/staff/new"
+          className="self-start rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white"
+        >
+          Add staff
+        </Link>
+      )}
       <table className="w-full max-w-5xl border-collapse bg-white text-left text-sm">
         <thead>
           <tr className="border-b border-zinc-200 text-zinc-600">
@@ -47,7 +52,14 @@ async function StaffList() {
               </td>
               <td className="p-3">{member.email}</td>
               <td className="p-3">{ROLE_LABELS[member.role]}</td>
-              <td className="p-3">{member.active ? "Active" : "Inactive"}</td>
+              <td className="p-3">
+                {member.active ? "Active" : "Inactive"}
+                {member.active && member.lastDay && (
+                  <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                    Leaving {formatDate(member.lastDay)}
+                  </span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

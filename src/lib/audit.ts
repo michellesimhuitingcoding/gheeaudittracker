@@ -6,6 +6,8 @@ export const AUDIT_ACTIONS = {
   STAFF_DEACTIVATED: "Deactivated staff",
   STAFF_REACTIVATED: "Reactivated staff",
   STAFF_PASSWORD_RESET: "Reset staff password",
+  STAFF_LAST_DAY_SET: "Recorded last day",
+  STAFF_LAST_DAY_CLEARED: "Cleared last day",
   CLIENT_CREATED: "Added client",
   CLIENT_UPDATED: "Changed client details",
   EXTERNAL_AUDITOR_ADDED: "Added external auditor",
