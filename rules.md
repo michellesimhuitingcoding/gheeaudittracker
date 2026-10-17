@@ -27,18 +27,17 @@ framework or major dependency without explicit approval.
 9. No `console.log`, debugger, or commented-out code in committed files.
 
 ## Change management
-10. Log every change to CHANGELOG.md (date — change — why).
-11. Work on a branch. Commit with clear messages. Open a PR for
+10. Work on a branch. Commit with clear messages. Open a PR for
     non-trivial changes; do not push directly to main.
-12. Keep commits scoped — one logical change per commit.
+11. Keep commits scoped — one logical change per commit.
 
 ## Security & data
-13. Never commit secrets, tokens, or credentials. Use env vars / .env
+12. Never commit secrets, tokens, or credentials. Use env vars / .env
     (git-ignored). Add an .env.example for required keys.
-14. Enforce permissions server-side, not only in the UI.
-15. Validate all input at the boundary (API/server), not just the client.
+13. Enforce permissions server-side, not only in the UI.
+14. Validate all input at the boundary (API/server), not just the client.
 
 ## Spec authority
-16. WORKFLOW.md is the source of truth for scope and behaviour.
+15. WORKFLOW.md is the source of truth for scope and behaviour.
     ISQM is out of scope (handled in the ABOT system). Phase 1 only
     until told otherwise. If code and WORKFLOW.md disagree, stop and ask.
