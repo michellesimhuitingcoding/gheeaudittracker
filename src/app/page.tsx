@@ -1,14 +1,21 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { LogoutButton } from "@/components/logout-button";
 import { requireStaff } from "@/lib/current-staff";
+import { ROLE_LABELS } from "@/lib/roles";
 
 async function CurrentStaff() {
   const staff = await requireStaff();
 
   return (
     <div className="flex items-center gap-4 text-sm text-zinc-700">
+      {staff.role === "MASTER_ADMIN" && (
+        <Link href="/staff" className="underline">
+          Staff
+        </Link>
+      )}
       <span>
-        {staff.name} · {staff.role.replaceAll("_", " ").toLowerCase()}
+        {staff.name} · {ROLE_LABELS[staff.role]}
       </span>
       <LogoutButton />
     </div>
