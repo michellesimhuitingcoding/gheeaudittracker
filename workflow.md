@@ -57,7 +57,7 @@ Form E job (employer return): Receive payroll → Prepare Form E → Manager rev
 | Audit Admin Assistant | Master list, allocations | Document received; print; sign coordination; intake | Bill; payments; assign; timesheet |
 | Audit Admin Manager | Same + timesheet | + review Partner-owned bookkeeping; edit hourly rates | Bill; payments; edit fees |
 | Secretarial | All clients (MBRS) | Acknowledge; mark MBRS | Audit; tax; billing |
-| Secretarial Assistant | Same as Secretarial | Same as Secretarial | Same as Secretarial |
+| Secretarial Assistant | Same as Secretarial (all clients, MBRS) | Acknowledge on behalf of Secretarial (updates immediately); mark MBRS submitted — pending until a Secretarial approves | Audit; tax; billing; approve MBRS submission |
 | Master Admin | Everything | Assign roles; settings; backup | Business work |
 | Bookkeeper (ext) | — | — | — |
 | Outsider referrer (ext) | — | — | — |
