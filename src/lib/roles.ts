@@ -14,3 +14,6 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 export const ROLES = Object.values(Role);
+
+// WORKFLOW.md §9: who can open the full audit log.
+export const VIEW_AUDIT_LOG: readonly Role[] = ["MASTER_ADMIN", "PARTNER", "MANAGER"];

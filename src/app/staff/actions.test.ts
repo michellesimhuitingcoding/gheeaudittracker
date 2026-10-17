@@ -41,6 +41,10 @@ describe("staff actions", () => {
     const deactivate = new FormData();
     deactivate.set("active", "false");
     await actions.setStaffActiveAction("s1", null, deactivate);
+    await actions.createStaffAction(null, form);
+    await actions.resetPasswordAction("s1", null, form);
+    expect(service.createStaff).toHaveBeenCalledWith("actor", expect.any(Object));
+    expect(service.resetStaffPassword).toHaveBeenCalledWith("actor", "s1", null);
     expect(service.updateStaff).toHaveBeenCalledWith("actor", "s1", expect.any(Object));
     expect(service.setStaffActive).toHaveBeenCalledWith("actor", "s1", false);
   });

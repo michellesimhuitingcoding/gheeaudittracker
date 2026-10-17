@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { authenticate } from "@/lib/authenticate";
+import { recordAudit } from "@/lib/audit";
+import { authenticate, normaliseEmail } from "@/lib/authenticate";
 import { db } from "@/lib/db";
 
 export const authOptions: NextAuthOptions = {
@@ -13,8 +14,18 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      authorize: (credentials) =>
-        authenticate(credentials, (email) => db.staff.findUnique({ where: { email } })),
+      async authorize(credentials) {
+        const staff = await authenticate(credentials, (email) =>
+          db.staff.findUnique({ where: { email } }),
+        );
+        if (staff) {
+          await recordAudit(db, { action: "LOGIN_SUCCEEDED", actorId: staff.id, entityType: "Staff", entityId: staff.id });
+        } else {
+          const attempted = typeof credentials?.email === "string" ? normaliseEmail(credentials.email) : "";
+          await recordAudit(db, { action: "LOGIN_FAILED", detail: attempted.slice(0, 200) });
+        }
+        return staff;
+      },
     }),
   ],
   callbacks: {

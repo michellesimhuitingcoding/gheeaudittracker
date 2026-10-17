@@ -5,6 +5,7 @@ import { NoPermission } from "@/components/no-permission";
 import { PageShell } from "@/components/page-shell";
 import { requireStaff } from "@/lib/current-staff";
 import { db } from "@/lib/db";
+import { formatDateTime } from "@/lib/format";
 import { resetPasswordAction, setStaffActiveAction, updateStaffAction } from "../actions";
 import { ActiveToggle, ResetPasswordForm } from "../staff-account";
 import { StaffForm } from "../staff-form";
@@ -22,8 +23,19 @@ async function EditStaff({ params }: { params: Promise<{ id: string }> }) {
   });
   if (!staff) notFound();
 
+  const lastChange = await db.auditLog.findFirst({
+    where: { entityType: "Staff", entityId: staff.id, action: { startsWith: "STAFF_" } },
+    orderBy: [{ at: "desc" }, { id: "desc" }],
+    select: { at: true, actor: { select: { name: true } } },
+  });
+
   return (
     <div className="flex flex-col gap-10">
+      {lastChange && (
+        <p className="text-sm text-zinc-600">
+          Last updated by {lastChange.actor?.name ?? "—"} at {formatDateTime(lastChange.at)}
+        </p>
+      )}
       <section className="flex flex-col gap-3">
         <h2 className="font-medium text-zinc-900">Details</h2>
         <StaffForm action={updateStaffAction.bind(null, staff.id)} values={staff} submitLabel="Save changes" />

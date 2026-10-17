@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { LogoutButton } from "@/components/logout-button";
 import { requireStaff } from "@/lib/current-staff";
-import { ROLE_LABELS } from "@/lib/roles";
+import { hasRole } from "@/lib/permissions";
+import { ROLE_LABELS, VIEW_AUDIT_LOG } from "@/lib/roles";
 
 async function CurrentStaff() {
   const staff = await requireStaff();
@@ -12,6 +13,11 @@ async function CurrentStaff() {
       {staff.role === "MASTER_ADMIN" && (
         <Link href="/staff" className="underline">
           Staff
+        </Link>
+      )}
+      {hasRole(staff.role, VIEW_AUDIT_LOG) && (
+        <Link href="/audit" className="underline">
+          Audit log
         </Link>
       )}
       <span>
