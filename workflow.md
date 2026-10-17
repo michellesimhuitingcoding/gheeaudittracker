@@ -4,7 +4,7 @@
 - Malaysian accounting firm, Kuching, Sarawak
 - Services: Audit, Tax, Bookkeeping, Secretarial tracking
 - 10 login roles + 2 external (no login)
-- 1,000+ portfolios (scale target)
+- No limit on clients or staff (must stay fast as the firm grows)
 - SME clients only (no listed companies)
 
 **Login roles:**
