@@ -135,3 +135,50 @@ export function PreAuditDeadlineForm({ action, current }: { action: Action; curr
     </form>
   );
 }
+
+export function JobBudgetForm({
+  action,
+  budgetHours,
+  budgetCost,
+}: {
+  action: Action;
+  budgetHours: string;
+  budgetCost: string;
+}) {
+  const [state, onSubmit, pending] = useFormAction(action);
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
+      <label className={labelClass}>
+        Budget hours
+        <input
+          name="budgetHours"
+          type="number"
+          step="0.25"
+          min="0"
+          defaultValue={budgetHours}
+          className={`${inputClass} w-32`}
+        />
+      </label>
+      <label className={labelClass}>
+        Budget cost (RM)
+        <input
+          name="budgetCost"
+          type="number"
+          step="0.01"
+          min="0"
+          defaultValue={budgetCost}
+          className={`${inputClass} w-40`}
+        />
+      </label>
+      <button type="submit" disabled={pending} className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+        Save budget
+      </button>
+      <div className="w-full">
+        <FieldError state={state} name="budgetHours" />
+        <FieldError state={state} name="budgetCost" />
+        <FormMessage state={state} />
+      </div>
+    </form>
+  );
+}

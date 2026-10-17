@@ -13,8 +13,12 @@ import { formatDate, isoDate } from "@/lib/deadlines";
 import { formatDateTime, todayInMyt } from "@/lib/format";
 import { canConfirmPreAuditDeadline } from "@/lib/jobs/deadline";
 import { STAGES, STAGE_LABELS, checkStageMove, needsReviewNote, stageLabel } from "@/lib/jobs/stages";
-import { checkInAction, confirmPreAuditDeadlineAction, moveAuditStageAction } from "../actions";
-import { CheckInButton, PreAuditDeadlineForm, StageMoveForm } from "../job-forms";
+import { hasRole } from "@/lib/permissions";
+import { VIEW_HOURLY_RATES, canSetJobBudget } from "@/lib/timecost/permissions";
+import { formatRinggit, jobTimecost } from "@/lib/timecost/timecost";
+import { BILLABLE_CATEGORIES } from "@/lib/timecost/utilisation";
+import { checkInAction, confirmPreAuditDeadlineAction, moveAuditStageAction, setJobBudgetAction } from "../actions";
+import { CheckInButton, JobBudgetForm, PreAuditDeadlineForm, StageMoveForm } from "../job-forms";
 
 export const metadata: Metadata = { title: "Audit job" };
 
@@ -43,6 +47,22 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
     orderBy: { createdAt: "asc" },
     select: { staffId: true, staff: { select: { name: true } } },
   });
+  const billable = await db.timesheetEntry.findMany({
+    where: { jobId: job.id, category: { in: [...BILLABLE_CATEGORIES] } },
+    select: { hours: true, staff: { select: { hourlyRate: true } } },
+  });
+  // Rates are live until timesheet locking freezes them (WORKFLOW.md §10).
+  const timecost = jobTimecost(
+    billable.map((row) => ({
+      hours: Number(row.hours),
+      rate: row.staff.hourlyRate === null ? null : Number(row.staff.hourlyRate),
+    })),
+    {
+      hours: job.budgetHours === null ? null : Number(job.budgetHours),
+      cost: job.budgetCost === null ? null : Number(job.budgetCost),
+    },
+  );
+  const showCost = hasRole(viewer.role, VIEW_HOURLY_RATES);
   const activity = lastActivity([job.createdAt, job.checkIns[0]?.createdAt, last?.at]) ?? job.createdAt;
 
   return (
@@ -119,6 +139,53 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="font-medium text-zinc-900">Budget vs actual</h2>
+        <table className="w-full max-w-2xl border-collapse bg-white text-left text-sm">
+          <thead>
+            <tr className="border-b border-zinc-200 text-zinc-600">
+              <th className="p-3 font-medium" />
+              <th className="p-3 font-medium">Budget</th>
+              <th className="p-3 font-medium">Actual</th>
+              <th className="p-3 font-medium">Variance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b border-zinc-100 text-zinc-900">
+              <td className="p-3 text-zinc-600">Hours</td>
+              <td className="p-3">{timecost.budgetHours ?? "—"}</td>
+              <td className="p-3">{timecost.hours}</td>
+              <td className="p-3">
+                <Variance value={timecost.hoursVariance} format={(hours) => `${hours} h`} />
+              </td>
+            </tr>
+            {showCost && (
+              <tr className="border-b border-zinc-100 text-zinc-900">
+                <td className="p-3 text-zinc-600">Timecost</td>
+                <td className="p-3">{timecost.budgetCost === null ? "—" : formatRinggit(timecost.budgetCost)}</td>
+                <td className="p-3">{formatRinggit(timecost.cost)}</td>
+                <td className="p-3">
+                  <Variance value={timecost.costVariance} format={formatRinggit} />
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        <p className="text-sm text-zinc-600">Actual is Work and Overtime logged to this job. Training/CPD is excluded.</p>
+        {showCost && timecost.unratedHours > 0 && (
+          <p className="text-sm text-amber-700">
+            {timecost.unratedHours} hours are from staff with no hourly rate and are not in the timecost.
+          </p>
+        )}
+        {canSetJobBudget(viewer, job.client) && (
+          <JobBudgetForm
+            action={setJobBudgetAction.bind(null, job.id)}
+            budgetHours={job.budgetHours?.toString() ?? ""}
+            budgetCost={job.budgetCost?.toFixed(2) ?? ""}
+          />
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="font-medium text-zinc-900">Move stage</h2>
         {move.ok ? (
           <StageMoveForm
@@ -172,6 +239,13 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
       </section>
     </div>
   );
+}
+
+function Variance({ value, format }: { value: number | null; format: (value: number) => string }) {
+  if (value === null) return <span className="text-zinc-500">No budget</span>;
+  if (value > 0) return <span className="text-red-700">{format(value)} over</span>;
+  if (value < 0) return <span className="text-green-700">{format(-value)} under</span>;
+  return <span>On budget</span>;
 }
 
 export default function JobPage({ params }: PageProps<"/jobs/[id]">) {

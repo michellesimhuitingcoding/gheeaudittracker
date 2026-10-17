@@ -7,6 +7,7 @@ import { clientListFilter } from "@/lib/clients/permissions";
 import { requireStaff } from "@/lib/current-staff";
 import { db } from "@/lib/db";
 import { todayInMyt } from "@/lib/format";
+import { monthToDateUtilisation } from "@/lib/timecost/service";
 import { CATEGORY_LABELS, timesheetCategories } from "@/lib/timesheet/permissions";
 import { addTimesheetEntryAction, removeTimesheetEntryAction, updateTimesheetEntryAction } from "./actions";
 import { EntryForm, RemoveEntryButton } from "./timesheet-forms";
@@ -38,7 +39,7 @@ async function Timesheet({ searchParams }: { searchParams: Promise<Search> }) {
   const date = parseDate((await searchParams).date, today);
   const clientFilter = clientListFilter(viewer);
 
-  const [jobs, entries] = await Promise.all([
+  const [jobs, entries, utilisation] = await Promise.all([
     clientFilter
       ? db.auditJob.findMany({
           where: { client: clientFilter },
@@ -51,6 +52,8 @@ async function Timesheet({ searchParams }: { searchParams: Promise<Search> }) {
       orderBy: { createdAt: "asc" },
       include: { job: { select: { year: true, client: { select: { name: true } } } } },
     }),
+    // Partners log overtime only, so utilisation does not apply to them.
+    viewer.role === "PARTNER" ? null : monthToDateUtilisation([viewer.id]).then((rows) => rows.get(viewer.id)!),
   ]);
   const jobOptions = jobs.map((job) => ({ value: job.id, label: `${job.client.name} · FY ${job.year}` }));
   const categoryOptions = allowed.map((category) => ({ value: category, label: CATEGORY_LABELS[category] }));
@@ -83,6 +86,12 @@ async function Timesheet({ searchParams }: { searchParams: Promise<Search> }) {
           </Link>
         )}
         {viewer.role === "PARTNER" && <span className="text-zinc-600">Partners log overtime only.</span>}
+        {utilisation && (
+          <span className="text-zinc-600">
+            Utilisation this month: {utilisation.percent === null ? "—" : `${utilisation.percent}%`} (
+            {utilisation.billableHours} billable of {utilisation.availableHours} available hours)
+          </span>
+        )}
       </div>
 
       <section className="flex flex-col gap-3">

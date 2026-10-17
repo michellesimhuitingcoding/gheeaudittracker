@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ActivityBadge } from "@/components/activity-badge";
 import { NoPermission } from "@/components/no-permission";
 import { PageShell } from "@/components/page-shell";
+import { UtilisationCell } from "@/components/utilisation";
 import { requireStaff } from "@/lib/current-staff";
 import { formatDateTime } from "@/lib/format";
 import { ROLE_LABELS } from "@/lib/roles";
@@ -20,7 +21,10 @@ async function Team() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-zinc-600">Seniors and Juniors currently assigned to your clients.</p>
+      <p className="text-sm text-zinc-600">
+        Seniors and Juniors currently assigned to your clients. Utilisation is billable hours (Work and Overtime on
+        any job) ÷ available hours (8 per weekday, less public holidays).
+      </p>
       <table className="w-full max-w-6xl border-collapse bg-white text-left text-sm">
         <thead>
           <tr className="border-b border-zinc-200 text-zinc-600">
@@ -29,6 +33,7 @@ async function Team() {
             <th className="p-3 font-medium">Your clients</th>
             <th className="p-3 font-medium">Audit jobs</th>
             <th className="p-3 font-medium">Hours this week</th>
+            <th className="p-3 font-medium">Utilisation (month to date)</th>
             <th className="p-3 font-medium">Last check-in (MYT)</th>
           </tr>
         </thead>
@@ -51,6 +56,9 @@ async function Team() {
               <td className="p-3">{member.jobs}</td>
               <td className="p-3">{member.hoursThisWeek}</td>
               <td className="p-3">
+                <UtilisationCell utilisation={member.utilisation} />
+              </td>
+              <td className="p-3">
                 {member.lastCheckIn ? (
                   <div className="flex flex-col gap-1">
                     {formatDateTime(member.lastCheckIn)}
@@ -64,7 +72,7 @@ async function Team() {
           ))}
           {team.length === 0 && (
             <tr>
-              <td colSpan={6} className="p-3 text-zinc-600">
+              <td colSpan={7} className="p-3 text-zinc-600">
                 No Seniors or Juniors are assigned to your clients.
               </td>
             </tr>

@@ -28,6 +28,8 @@ model Staff {
   email        String   @unique
   role         Role
   passwordHash String
+  // WORKFLOW.md §10: manual estimate set by Admin / Master Admin / Audit Admin Manager.
+  hourlyRate   Decimal? @db.Decimal(10, 2)
   // Leavers are deactivated, never deleted (RULES.md 5, audit trail).
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
@@ -209,6 +211,9 @@ model AuditJob {
   preAuditDeadlineConfirmedById String?
   preAuditDeadlineConfirmedBy   Staff?      @relation("PreAuditDeadlineConfirmedBy", fields: [preAuditDeadlineConfirmedById], references: [id], onDelete: Restrict)
   preAuditDeadlineConfirmedAt   DateTime?
+  // WORKFLOW.md §10 budget, set by the client's Manager or Partner.
+  budgetHours                   Decimal?    @db.Decimal(8, 2)
+  budgetCost                    Decimal?    @db.Decimal(12, 2)
   createdAt                     DateTime    @default(now())
   updatedAt                     DateTime    @updatedAt
 
@@ -304,4 +309,11 @@ model Notification {
 
   @@index([recipientId, closedAt])
   @@index([jobId, kind, closedAt])
+}
+
+// Public holidays, excluded from available hours for utilisation.
+model PublicHoliday {
+  id   String   @id @default(cuid())
+  date DateTime @unique @db.Date
+  name String
 }

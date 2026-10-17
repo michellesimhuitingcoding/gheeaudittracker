@@ -18,6 +18,10 @@ export const AUDIT_ACTIONS = {
   TIMESHEET_ENTRY_UPDATED: "Changed logged time",
   TIMESHEET_ENTRY_REMOVED: "Removed logged time",
   JOB_CHECKED_IN: "Checked in to job",
+  HOURLY_RATE_CHANGED: "Changed hourly rate",
+  JOB_BUDGET_CHANGED: "Changed job budget",
+  PUBLIC_HOLIDAY_ADDED: "Added public holiday",
+  PUBLIC_HOLIDAY_REMOVED: "Removed public holiday",
   LOGIN_SUCCEEDED: "Logged in",
   LOGIN_FAILED: "Failed login",
 } as const;
