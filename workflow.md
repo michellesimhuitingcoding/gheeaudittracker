@@ -1,7 +1,7 @@
 # WORKFLOW.md — Engagement Tracker Specification
 
 ## 1. Firm Structure
-- Malaysian accounting firm, ~50 staff, Kuching, Sarawak
+- Malaysian accounting firm, Kuching, Sarawak
 - Services: Audit, Tax, Bookkeeping, Secretarial tracking
 - 10 login roles + 2 external (no login)
 - 1,000+ portfolios (scale target)
@@ -56,7 +56,7 @@ Form E job (employer return): Receive payroll → Prepare Form E → Manager rev
 | Admin | Invoices, payments | Set owner; invoice; payment; reminders; document received; edit hourly rates, salaries, OT pay | Assign; move audit stages; edit timecost |
 | Audit Admin Assistant | Master list, allocations | Document received; print; sign coordination; intake | Bill; payments; assign; timesheet |
 | Audit Admin Manager | Same + timesheet | + review Partner-owned bookkeeping; edit hourly rates | Bill; payments; edit fees |
-| Secretarial (5) | All clients (MBRS) | Acknowledge; mark MBRS | Audit; tax; billing |
+| Secretarial | All clients (MBRS) | Acknowledge; mark MBRS | Audit; tax; billing |
 | Secretarial Assistant | Same as Secretarial | Same as Secretarial | Same as Secretarial |
 | Master Admin | Everything | Assign roles; settings; backup | Business work |
 | Bookkeeper (ext) | — | — | — |
