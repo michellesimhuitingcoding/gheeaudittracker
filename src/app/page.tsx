@@ -29,6 +29,11 @@ async function CurrentStaff() {
         </>
       )}
       {staff.role === "MANAGER" && (
+        <Link href="/dashboard" className="underline">
+          Dashboard
+        </Link>
+      )}
+      {staff.role === "MANAGER" && (
         <Link href="/progress" className="underline">
           My Progress
         </Link>
