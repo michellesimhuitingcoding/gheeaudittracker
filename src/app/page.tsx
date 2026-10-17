@@ -14,9 +14,14 @@ async function CurrentStaff() {
   return (
     <div className="flex items-center gap-4 text-sm text-zinc-700">
       {clientListFilter(staff) && (
-        <Link href="/clients" className="underline">
-          Clients
-        </Link>
+        <>
+          <Link href="/clients" className="underline">
+            Clients
+          </Link>
+          <Link href="/calendar" className="underline">
+            Calendar
+          </Link>
+        </>
       )}
       {staff.role === "MANAGER" && (
         <Link href="/progress" className="underline">

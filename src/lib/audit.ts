@@ -13,6 +13,7 @@ export const AUDIT_ACTIONS = {
   EXTERNAL_AUDITOR_REMOVED: "Removed external auditor",
   AUDIT_JOB_CREATED: "Created audit job",
   AUDIT_STAGE_CHANGED: "Moved audit stage",
+  PRE_AUDIT_DEADLINE_CONFIRMED: "Confirmed pre-audit deadline",
   TIMESHEET_ENTRY_ADDED: "Logged time",
   TIMESHEET_ENTRY_UPDATED: "Changed logged time",
   TIMESHEET_ENTRY_REMOVED: "Removed logged time",

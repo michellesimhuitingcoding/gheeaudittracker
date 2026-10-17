@@ -41,6 +41,7 @@ model Staff {
   seniorClients         Client[]               @relation("ClientSenior")
   assignedClients       ClientAssignedStaff[]
   createdAuditJobs      AuditJob[]
+  confirmedDeadlines    AuditJob[]             @relation("PreAuditDeadlineConfirmedBy")
   auditStageChanges     AuditStageChange[]
   timesheetEntries      TimesheetEntry[]
   jobCheckIns           JobCheckIn[]
@@ -195,16 +196,21 @@ enum AuditStage {
 
 // One audit per client per financial year (the year the FYE falls in).
 model AuditJob {
-  id          String      @id @default(cuid())
-  clientId    String
-  client      Client      @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  year        Int
+  id                            String      @id @default(cuid())
+  clientId                      String
+  client                        Client      @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  year                          Int
   // Null until documents are received.
-  stage       AuditStage?
-  createdById String
-  createdBy   Staff       @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  stage                         AuditStage?
+  createdById                   String
+  createdBy                     Staff       @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  // WORKFLOW.md §3: the Partner confirms the pre-audit deadline.
+  preAuditDeadline              DateTime?   @db.Date
+  preAuditDeadlineConfirmedById String?
+  preAuditDeadlineConfirmedBy   Staff?      @relation("PreAuditDeadlineConfirmedBy", fields: [preAuditDeadlineConfirmedById], references: [id], onDelete: Restrict)
+  preAuditDeadlineConfirmedAt   DateTime?
+  createdAt                     DateTime    @default(now())
+  updatedAt                     DateTime    @updatedAt
 
   stageChanges     AuditStageChange[]
   timesheetEntries TimesheetEntry[]
@@ -213,6 +219,7 @@ model AuditJob {
 
   @@unique([clientId, year])
   @@index([stage])
+  @@index([preAuditDeadline])
 }
 
 // WORKFLOW.md §7 stage change gate: note + hours + next action (+ review note at 5, 6).

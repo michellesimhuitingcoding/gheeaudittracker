@@ -9,10 +9,12 @@ import { canCheckIn, lastActivity } from "@/lib/checkin/activity";
 import { canViewClient } from "@/lib/clients/permissions";
 import { requireStaff } from "@/lib/current-staff";
 import { db } from "@/lib/db";
+import { formatDate, isoDate } from "@/lib/deadlines";
 import { formatDateTime, todayInMyt } from "@/lib/format";
+import { canConfirmPreAuditDeadline } from "@/lib/jobs/deadline";
 import { STAGES, STAGE_LABELS, checkStageMove, needsReviewNote, stageLabel } from "@/lib/jobs/stages";
-import { checkInAction, moveAuditStageAction } from "../actions";
-import { CheckInButton, StageMoveForm } from "../job-forms";
+import { checkInAction, confirmPreAuditDeadlineAction, moveAuditStageAction } from "../actions";
+import { CheckInButton, PreAuditDeadlineForm, StageMoveForm } from "../job-forms";
 
 export const metadata: Metadata = { title: "Audit job" };
 
@@ -23,6 +25,7 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
     where: { id },
     include: {
       client: { include: { signingPartners: true, assignedStaff: true } },
+      preAuditDeadlineConfirmedBy: { select: { name: true } },
       stageChanges: { orderBy: { at: "desc" }, include: { by: { select: { name: true } } } },
       checkIns: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
     },
@@ -94,6 +97,26 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
           </li>
         ))}
       </ol>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="font-medium text-zinc-900">Pre-audit deadline</h2>
+        {job.preAuditDeadline ? (
+          <p className="text-sm text-zinc-700">
+            {formatDate(job.preAuditDeadline)}
+            {job.preAuditDeadlineConfirmedBy && (
+              <span className="text-zinc-500"> · confirmed by {job.preAuditDeadlineConfirmedBy.name}</span>
+            )}
+          </p>
+        ) : (
+          <p className="text-sm text-zinc-500">Not confirmed by the Partner yet.</p>
+        )}
+        {canConfirmPreAuditDeadline(viewer, { partnerId: job.client.partnerId, signingPartnerIds }) && (
+          <PreAuditDeadlineForm
+            action={confirmPreAuditDeadlineAction.bind(null, job.id)}
+            current={job.preAuditDeadline ? isoDate(job.preAuditDeadline) : null}
+          />
+        )}
+      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="font-medium text-zinc-900">Move stage</h2>

@@ -18,6 +18,7 @@ import {
 import { canCreateClient, clientListFilter } from "@/lib/clients/permissions";
 import { requireStaff } from "@/lib/current-staff";
 import { db } from "@/lib/db";
+import { formCApplies, formatDate, nextFormCDue, todayDate } from "@/lib/deadlines";
 
 export const metadata: Metadata = { title: "Clients" };
 
@@ -89,6 +90,7 @@ async function ClientList({ searchParams }: { searchParams: Promise<RawSearch> }
     },
   });
   const groups = groupByManager(clients);
+  const today = todayDate();
   const isPartner = viewer.role === "PARTNER";
 
   return (
@@ -163,6 +165,7 @@ async function ClientList({ searchParams }: { searchParams: Promise<RawSearch> }
                 <th className="p-3 font-medium">Entity</th>
                 <th className="p-3 font-medium">Reg. no.</th>
                 <th className="p-3 font-medium">FYE</th>
+                <th className="p-3 font-medium">Form C due</th>
                 <th className="p-3 font-medium">Partner</th>
                 <th className="p-3 font-medium">Services</th>
                 <th className="p-3 font-medium">Payment</th>
@@ -180,6 +183,11 @@ async function ClientList({ searchParams }: { searchParams: Promise<RawSearch> }
                   <td className="p-3">{ENTITY_TYPE_LABELS[client.entityType]}</td>
                   <td className="p-3">{client.regNo ?? "—"}</td>
                   <td className="p-3">{formatFye(client.fyeDay, client.fyeMonth)}</td>
+                  <td className="p-3">
+                    {formCApplies(client.entityType)
+                      ? formatDate(nextFormCDue(client.fyeDay, client.fyeMonth, today))
+                      : "—"}
+                  </td>
                   <td className="p-3">{client.partner?.name ?? "—"}</td>
                   <td className="p-3">{client.services.map((service) => SERVICE_LABELS[service]).join(", ")}</td>
                   <td className="p-3">{PAYMENT_STATUS_LABELS[client.paymentStatus]}</td>

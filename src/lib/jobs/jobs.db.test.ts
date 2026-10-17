@@ -113,3 +113,31 @@ describe("audit jobs (database)", () => {
     });
   });
 });
+
+describe("pre-audit deadline (database)", () => {
+  it("lets only the client's Partner confirm it, and logs the change", async () => {
+    const { confirmPreAuditDeadline } = await import("@/lib/jobs/deadline");
+    await createAuditJob(admin, clientId, { year: 2027 });
+    const job = await db.auditJob.findFirstOrThrow({ where: { clientId, year: 2027 } });
+
+    expect(await confirmPreAuditDeadline(manager, job.id, { preAuditDeadline: "2027-03-31" })).toMatchObject({
+      ok: false,
+    });
+    expect(await confirmPreAuditDeadline(partner, job.id, { preAuditDeadline: "2027-03-31" })).toMatchObject({
+      ok: true,
+    });
+    expect(await confirmPreAuditDeadline(partner, job.id, { preAuditDeadline: "2027-04-15" })).toMatchObject({
+      ok: true,
+    });
+
+    const updated = await db.auditJob.findUniqueOrThrow({ where: { id: job.id } });
+    expect(updated.preAuditDeadline?.toISOString().slice(0, 10)).toBe("2027-04-15");
+    expect(updated.preAuditDeadlineConfirmedById).toBe(partner.id);
+
+    const entry = await db.auditLog.findFirstOrThrow({
+      where: { entityType: "AuditJob", entityId: job.id, action: "PRE_AUDIT_DEADLINE_CONFIRMED" },
+      orderBy: [{ at: "desc" }, { id: "desc" }],
+    });
+    expect(entry.changes).toEqual({ preAuditDeadline: { from: "2027-03-31", to: "2027-04-15" } });
+  });
+});

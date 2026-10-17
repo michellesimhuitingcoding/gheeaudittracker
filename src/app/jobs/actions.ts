@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { checkIn } from "@/lib/checkin/service";
 import { requireStaff } from "@/lib/current-staff";
 import type { FormState } from "@/lib/form-state";
+import { confirmPreAuditDeadline } from "@/lib/jobs/deadline";
 import { stageChangeFormValues } from "@/lib/jobs/schema";
 import { createAuditJob, moveAuditStage } from "@/lib/jobs/service";
 
@@ -30,6 +31,20 @@ export async function checkInAction(jobId: string): Promise<FormState> {
   if (result.ok) {
     revalidatePath(`/jobs/${jobId}`);
     revalidatePath("/clients", "layout");
+  }
+  return result;
+}
+
+export async function confirmPreAuditDeadlineAction(
+  jobId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const actor = await requireStaff();
+  const result = await confirmPreAuditDeadline(actor, jobId, { preAuditDeadline: formData.get("preAuditDeadline") });
+  if (result.ok) {
+    revalidatePath(`/jobs/${jobId}`);
+    revalidatePath("/calendar");
   }
   return result;
 }
