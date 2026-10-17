@@ -48,6 +48,7 @@ model Staff {
   timesheetEntries      TimesheetEntry[]
   jobCheckIns           JobCheckIn[]
   notifications         Notification[]
+  internalNotes         InternalNote[]
 }
 
 // WORKFLOW.md §9: who, when, what, from, to. Append-only — the database
@@ -140,6 +141,7 @@ model Client {
   externalAuditors ExternalAuditor[]
   auditJobs        AuditJob[]
   notifications    Notification[]
+  internalNotes    InternalNote[]
 
   @@index([name])
   @@index([managerId])
@@ -221,6 +223,7 @@ model AuditJob {
   timesheetEntries TimesheetEntry[]
   checkIns         JobCheckIn[]
   notifications    Notification[]
+  internalNotes    InternalNote[]
 
   @@unique([clientId, year])
   @@index([stage])
@@ -316,4 +319,21 @@ model PublicHoliday {
   id   String   @id @default(cuid())
   date DateTime @unique @db.Date
   name String
+}
+
+// WORKFLOW.md §20 internal notes: staff-only notes on a client, optionally
+// about one audit job. Append-only so the record stays intact (WORKFLOW.md §9).
+model InternalNote {
+  id        String    @id @default(cuid())
+  clientId  String
+  client    Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  jobId     String?
+  job       AuditJob? @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  authorId  String
+  author    Staff     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  body      String
+  createdAt DateTime  @default(now())
+
+  @@index([clientId, createdAt])
+  @@index([jobId, createdAt])
 }

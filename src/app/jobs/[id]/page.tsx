@@ -18,6 +18,7 @@ import { VIEW_HOURLY_RATES, canSetJobBudget } from "@/lib/timecost/permissions";
 import { formatRinggit, jobTimecost } from "@/lib/timecost/timecost";
 import { BILLABLE_CATEGORIES } from "@/lib/timecost/utilisation";
 import { checkInAction, confirmPreAuditDeadlineAction, moveAuditStageAction, setJobBudgetAction } from "../actions";
+import { NotesSection } from "../../notes/notes-section";
 import { CheckInButton, JobBudgetForm, PreAuditDeadlineForm, StageMoveForm } from "../job-forms";
 
 export const metadata: Metadata = { title: "Audit job" };
@@ -198,6 +199,8 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
           <p className="rounded border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-500">{move.reason}</p>
         )}
       </section>
+
+      <NotesSection clientId={job.client.id} jobId={job.id} />
 
       <section className="flex flex-col gap-3">
         <h2 className="font-medium text-zinc-900">History</h2>
