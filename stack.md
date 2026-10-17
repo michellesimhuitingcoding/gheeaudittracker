@@ -43,3 +43,4 @@ These mirror RULES.md 6–8.
 - `NEXTAUTH_SECRET` — session signing secret
 - `NEXTAUTH_URL` — app base URL
 - `RESEND_API_KEY` — email provider key
+- `CRON_SECRET` — bearer token for scheduled jobs (`/api/cron/*`)

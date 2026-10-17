@@ -68,3 +68,12 @@ export function checkStageMove(viewer: Viewer, current: AuditStage | null, peopl
   }
   return { ok: true, to };
 }
+
+export type StageWorker = "STAFF" | "MANAGER" | "PARTNER";
+
+// Who must act while a job sits at `current` (null = not started).
+export function stageWorker(current: AuditStage | null): StageWorker | null {
+  if (current === "MANAGER_REVIEW" || current === "FINAL_REVIEW") return "MANAGER";
+  if (current === "PARTNER_REVIEW") return "PARTNER";
+  return MOVES_FROM[current ?? "START"].roles.includes("SENIOR") ? "STAFF" : null;
+}

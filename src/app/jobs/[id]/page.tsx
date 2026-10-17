@@ -2,15 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ActivityBadge } from "@/components/activity-badge";
 import { NoPermission } from "@/components/no-permission";
 import { PageShell } from "@/components/page-shell";
+import { canCheckIn, lastActivity } from "@/lib/checkin/activity";
 import { canViewClient } from "@/lib/clients/permissions";
 import { requireStaff } from "@/lib/current-staff";
 import { db } from "@/lib/db";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, todayInMyt } from "@/lib/format";
 import { STAGES, STAGE_LABELS, checkStageMove, needsReviewNote, stageLabel } from "@/lib/jobs/stages";
-import { moveAuditStageAction } from "../actions";
-import { StageMoveForm } from "../job-forms";
+import { checkInAction, moveAuditStageAction } from "../actions";
+import { CheckInButton, StageMoveForm } from "../job-forms";
 
 export const metadata: Metadata = { title: "Audit job" };
 
@@ -22,6 +24,7 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
     include: {
       client: { include: { signingPartners: true, assignedStaff: true } },
       stageChanges: { orderBy: { at: "desc" }, include: { by: { select: { name: true } } } },
+      checkIns: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
     },
   });
   if (!job) notFound();
@@ -32,6 +35,12 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
   const move = checkStageMove(viewer, job.stage, { ...job.client, signingPartnerIds });
   const currentIndex = job.stage ? STAGES.indexOf(job.stage) : -1;
   const last = job.stageChanges[0];
+  const todaysCheckIns = await db.jobCheckIn.findMany({
+    where: { jobId: job.id, date: new Date(todayInMyt()) },
+    orderBy: { createdAt: "asc" },
+    select: { staffId: true, staff: { select: { name: true } } },
+  });
+  const activity = lastActivity([job.createdAt, job.checkIns[0]?.createdAt, last?.at]) ?? job.createdAt;
 
   return (
     <div className="flex flex-col gap-8">
@@ -49,6 +58,24 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
           </span>
         )}
       </div>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <h2 className="font-medium text-zinc-900">Daily check-in</h2>
+          <ActivityBadge lastActivity={activity} />
+        </div>
+        {canCheckIn(viewer.role) && (
+          <CheckInButton
+            action={checkInAction.bind(null, job.id)}
+            checkedIn={todaysCheckIns.some((row) => row.staffId === viewer.id)}
+          />
+        )}
+        <p className="text-sm text-zinc-600">
+          {todaysCheckIns.length > 0
+            ? `Working on this today: ${todaysCheckIns.map((row) => row.staff.name).join(", ")}`
+            : "No one has checked in today."}
+        </p>
+      </section>
 
       <ol className="flex flex-wrap gap-2 text-xs">
         {STAGES.map((stage, index) => (

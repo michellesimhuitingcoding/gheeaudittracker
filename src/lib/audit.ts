@@ -16,6 +16,7 @@ export const AUDIT_ACTIONS = {
   TIMESHEET_ENTRY_ADDED: "Logged time",
   TIMESHEET_ENTRY_UPDATED: "Changed logged time",
   TIMESHEET_ENTRY_REMOVED: "Removed logged time",
+  JOB_CHECKED_IN: "Checked in to job",
   LOGIN_SUCCEEDED: "Logged in",
   LOGIN_FAILED: "Failed login",
 } as const;

@@ -94,3 +94,20 @@ export function CreateJobForm({ action, defaultYear }: { action: Action; default
     </form>
   );
 }
+
+export function CheckInButton({ action, checkedIn }: { action: Action; checkedIn: boolean }) {
+  const [state, onSubmit, pending] = useFormAction(action);
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-2">
+      <button
+        type="submit"
+        disabled={pending || checkedIn}
+        className="self-start rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+      >
+        {checkedIn ? "Checked in today" : pending ? "Saving…" : "I'm working on this today"}
+      </button>
+      <FormMessage state={state} />
+    </form>
+  );
+}

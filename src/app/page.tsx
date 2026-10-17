@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { LogoutButton } from "@/components/logout-button";
+import { NotificationBell } from "@/components/notification-bell";
 import { clientListFilter } from "@/lib/clients/permissions";
 import { requireStaff } from "@/lib/current-staff";
 import { hasRole } from "@/lib/permissions";
@@ -35,6 +36,7 @@ async function CurrentStaff() {
       <span>
         {staff.name} · {ROLE_LABELS[staff.role]}
       </span>
+      <NotificationBell />
       <LogoutButton />
     </div>
   );
