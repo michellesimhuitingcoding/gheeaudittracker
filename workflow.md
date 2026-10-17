@@ -1,10 +1,10 @@
 # WORKFLOW.md — Engagement Tracker Specification
 
 ## 1. Firm Structure
-- Malaysian accounting firm, ~50 staff, Kuching, Sarawak
+- Malaysian accounting firm, Kuching, Sarawak
 - Services: Audit, Tax, Bookkeeping, Secretarial tracking
 - 10 login roles + 2 external (no login)
-- 1,000+ portfolios (scale target)
+- No limit on clients or staff (must stay fast as the firm grows)
 - SME clients only (no listed companies)
 
 **Login roles:**
@@ -56,7 +56,8 @@ Form E job (employer return): Receive payroll → Prepare Form E → Manager rev
 | Admin | Invoices, payments | Set owner; invoice; payment; reminders; document received; edit hourly rates, salaries, OT pay | Assign; move audit stages; edit timecost |
 | Audit Admin Assistant | Master list, allocations | Document received; print; sign coordination; intake | Bill; payments; assign; timesheet |
 | Audit Admin Manager | Same + timesheet | + review Partner-owned bookkeeping; edit hourly rates | Bill; payments; edit fees |
-| Secretarial (5) | All clients (MBRS) | Acknowledge; mark MBRS | Audit; tax; billing |
+| Secretarial | All clients (MBRS) | Acknowledge; mark MBRS | Audit; tax; billing |
+| Secretarial Assistant | Same as Secretarial (all clients, MBRS) | Acknowledge on behalf of Secretarial (updates immediately); mark MBRS submitted — pending until a Secretarial approves | Audit; tax; billing; approve MBRS submission |
 | Master Admin | Everything | Assign roles; settings; backup | Business work |
 | Bookkeeper (ext) | — | — | — |
 | Outsider referrer (ext) | — | — | — |
@@ -208,7 +209,8 @@ portfolios, jobs (includes progress), timesheet, staff, settings, billing, payme
 ## 20. Build Phases
 
 **Phase 1 (I build — 6 weeks):**
-- Login + 5 roles
+- Login + all 10 roles
+- Server-enforced permissions (RULES.md 13)
 - Client Master Listing (grouped, search, filter)
 - Audit 9-stage tracker
 - Internal notes
@@ -234,9 +236,7 @@ portfolios, jobs (includes progress), timesheet, staff, settings, billing, payme
 - Site Work view
 - External auditor tracking
 - Absence tracking
-- All remaining roles
 - Commission model
-- Server-enforced permissions
 
 **Out of scope (ABOT system):**
 - ISQM Independence
