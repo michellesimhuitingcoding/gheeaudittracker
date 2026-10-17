@@ -22,6 +22,7 @@ import { formatDateTime } from "@/lib/format";
 import { stageLabel } from "@/lib/jobs/stages";
 import { canCreateAuditJob, isAuditable } from "@/lib/jobs/service";
 import { createAuditJobAction } from "../../jobs/actions";
+import { NotesSection } from "../../notes/notes-section";
 import { CreateJobForm } from "../../jobs/job-forms";
 import {
   addExternalAuditorAction,
@@ -184,6 +185,8 @@ async function ClientDetails({ params }: { params: Promise<{ id: string }> }) {
         )}
         {editable && <AddExternalAuditor action={addExternalAuditorAction.bind(null, client.id)} />}
       </section>
+
+      <NotesSection clientId={client.id} />
     </div>
   );
 }
