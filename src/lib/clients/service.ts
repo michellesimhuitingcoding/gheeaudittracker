@@ -63,6 +63,11 @@ export function clientAuditView(client: ClientValues, names: Map<string, string>
     owner: name(client.ownerId),
     manager: name(client.managerId),
     partner: name(client.partnerId),
+    senior: name(client.seniorId),
+    assignedStaff: client.assignedStaffIds
+      .map((id) => name(id) ?? id)
+      .sort()
+      .join(", "),
     services: client.services.map((service) => SERVICE_LABELS[service]).join(", "),
     dormant: yesNo(client.dormant),
     status: CLIENT_STATUS_LABELS[client.status],
@@ -90,6 +95,8 @@ const AUDIT_VIEW_FIELDS = [
   "owner",
   "manager",
   "partner",
+  "senior",
+  "assignedStaff",
   "services",
   "dormant",
   "status",
@@ -108,12 +115,30 @@ const AUDIT_VIEW_FIELDS = [
 async function checkPeople(
   tx: Tx,
   input: ClientInput,
-  before?: { ownerId: string; managerId: string | null; partnerId: string | null; signingPartnerIds: string[] },
+  before?: {
+    ownerId: string;
+    managerId: string | null;
+    partnerId: string | null;
+    seniorId: string | null;
+    signingPartnerIds: string[];
+    assignedStaffIds: string[];
+  },
 ): Promise<{ errors: FieldErrors; names: Map<string, string> }> {
   const ids = new Set(
-    [input.ownerId, input.managerId, input.partnerId, ...input.signingPartnerIds, before?.ownerId, before?.managerId, before?.partnerId, ...(before?.signingPartnerIds ?? [])].filter(
-      (id): id is string => Boolean(id),
-    ),
+    [
+      input.ownerId,
+      input.managerId,
+      input.partnerId,
+      input.seniorId,
+      ...input.signingPartnerIds,
+      ...input.assignedStaffIds,
+      before?.ownerId,
+      before?.managerId,
+      before?.partnerId,
+      before?.seniorId,
+      ...(before?.signingPartnerIds ?? []),
+      ...(before?.assignedStaffIds ?? []),
+    ].filter((id): id is string => Boolean(id)),
   );
   const staff = await tx.staff.findMany({
     where: { id: { in: [...ids] } },
@@ -140,6 +165,13 @@ async function checkPeople(
   if (added.some((id) => !isActive(id, ["PARTNER"]))) {
     errors.signingPartnerIds = ["Signing partners must be active Partners."];
   }
+  if (input.seniorId && input.seniorId !== before?.seniorId && !isActive(input.seniorId, ["SENIOR"])) {
+    errors.seniorId = ["Senior must be an active Senior."];
+  }
+  const addedStaff = input.assignedStaffIds.filter((id) => !before?.assignedStaffIds.includes(id));
+  if (addedStaff.some((id) => !isActive(id, ["JUNIOR", "SENIOR"]))) {
+    errors.assignedStaffIds = ["Assigned staff must be active Juniors or Seniors."];
+  }
   return { errors, names };
 }
 
@@ -156,12 +188,13 @@ export async function createClient(actor: Actor, input: unknown): Promise<Result
       const { errors, names } = await checkPeople(tx, data);
       if (Object.keys(errors).length > 0) return { ok: false, fieldErrors: errors };
 
-      const { signingPartnerIds, paymentStatus, ...fields } = data;
+      const { signingPartnerIds, assignedStaffIds, paymentStatus, ...fields } = data;
       const client = await tx.client.create({
         data: {
           ...fields,
           paymentStatus: paymentStatus ?? "NOT_INVOICED",
           signingPartners: { create: signingPartnerIds.map((partnerId) => ({ partnerId })) },
+          assignedStaff: { create: assignedStaffIds.map((staffId) => ({ staffId })) },
         },
       });
       await recordAudit(tx, {
@@ -187,7 +220,10 @@ export async function updateClient(actor: Actor, id: string, input: unknown): Pr
 
   try {
     return await db.$transaction(async (tx) => {
-      const current = await tx.client.findUnique({ where: { id }, include: { signingPartners: true } });
+      const current = await tx.client.findUnique({
+        where: { id },
+        include: { signingPartners: true, assignedStaff: true },
+      });
       if (!current) return { ok: false, error: "Client not found." };
       if (!canEditClient(actor, current)) return { ok: false, error: "You do not have permission to edit this client." };
 
@@ -199,7 +235,11 @@ export async function updateClient(actor: Actor, id: string, input: unknown): Pr
         return { ok: false, fieldErrors: { paymentStatus: ["Only Admin can change the payment status."] } };
       }
 
-      const before = { ...current, signingPartnerIds: current.signingPartners.map((row) => row.partnerId) };
+      const before = {
+        ...current,
+        signingPartnerIds: current.signingPartners.map((row) => row.partnerId),
+        assignedStaffIds: current.assignedStaff.map((row) => row.staffId),
+      };
       const { errors, names } = await checkPeople(tx, data, before);
       if (Object.keys(errors).length > 0) return { ok: false, fieldErrors: errors };
 
@@ -210,7 +250,7 @@ export async function updateClient(actor: Actor, id: string, input: unknown): Pr
       );
       if (Object.keys(changes).length === 0) return { ok: true, message: "No changes to save." };
 
-      const { signingPartnerIds, ...fields } = data;
+      const { signingPartnerIds, assignedStaffIds, ...fields } = data;
       await tx.client.update({
         where: { id },
         data: {
@@ -219,6 +259,10 @@ export async function updateClient(actor: Actor, id: string, input: unknown): Pr
           signingPartners: {
             deleteMany: {},
             create: signingPartnerIds.map((partnerId) => ({ partnerId })),
+          },
+          assignedStaff: {
+            deleteMany: {},
+            create: assignedStaffIds.map((staffId) => ({ staffId })),
           },
         },
       });

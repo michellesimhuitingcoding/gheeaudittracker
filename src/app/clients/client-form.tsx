@@ -36,6 +36,8 @@ export type ClientFormValues = {
   ownerId: string;
   managerId: string | null;
   partnerId: string | null;
+  seniorId: string | null;
+  assignedStaffIds: string[];
   services: Service[];
   dormant: boolean;
   status: ClientStatus;
@@ -203,6 +205,36 @@ export function ClientForm({
             </select>
             <FieldError state={state} name="partnerId" />
           </label>
+        </div>
+        <label className={labelClass}>
+          Senior
+          <select name="seniorId" defaultValue={values?.seniorId ?? ""} className={inputClass}>
+            <option value="">Not assigned</option>
+            {people.seniors.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.name}
+              </option>
+            ))}
+          </select>
+          <FieldError state={state} name="seniorId" />
+        </label>
+        <div className="flex flex-col gap-1 text-sm text-zinc-700">
+          Assigned staff (Juniors and Seniors on the job or assisting)
+          <div className="flex flex-wrap gap-4">
+            {people.assignable.map((person) => (
+              <label key={person.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="assignedStaffIds"
+                  value={person.id}
+                  defaultChecked={values?.assignedStaffIds.includes(person.id)}
+                />
+                {person.name}
+              </label>
+            ))}
+            {people.assignable.length === 0 && <span className="text-zinc-500">No Juniors or Seniors yet.</span>}
+          </div>
+          <FieldError state={state} name="assignedStaffIds" />
         </div>
       </Section>
 

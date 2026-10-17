@@ -49,6 +49,11 @@ export const clientSchema = z
     ownerId: z.string({ error: "Choose who sourced this client." }).min(1, { error: "Choose who sourced this client." }),
     managerId: optionalId,
     partnerId: optionalId,
+    seniorId: optionalId,
+    assignedStaffIds: z
+      .array(z.string().min(1))
+      .default([])
+      .transform((ids) => [...new Set(ids)]),
     services: z.array(z.enum(Service)).min(1, { error: "Choose at least one service." }),
     dormant: z.boolean(),
     status: z.enum(ClientStatus),
@@ -107,6 +112,8 @@ export function clientFormValues(formData: FormData) {
     ownerId: text("ownerId"),
     managerId: text("managerId"),
     partnerId: text("partnerId"),
+    seniorId: text("seniorId"),
+    assignedStaffIds: formData.getAll("assignedStaffIds").filter((value) => typeof value === "string"),
     services: formData.getAll("services").filter((value) => typeof value === "string"),
     dormant: formData.get("dormant") === "on",
     status: text("status"),
