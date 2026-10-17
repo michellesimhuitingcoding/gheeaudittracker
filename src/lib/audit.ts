@@ -11,6 +11,8 @@ export const AUDIT_ACTIONS = {
   EXTERNAL_AUDITOR_ADDED: "Added external auditor",
   EXTERNAL_AUDITOR_UPDATED: "Changed external auditor",
   EXTERNAL_AUDITOR_REMOVED: "Removed external auditor",
+  AUDIT_JOB_CREATED: "Created audit job",
+  AUDIT_STAGE_CHANGED: "Moved audit stage",
   LOGIN_SUCCEEDED: "Logged in",
   LOGIN_FAILED: "Failed login",
 } as const;

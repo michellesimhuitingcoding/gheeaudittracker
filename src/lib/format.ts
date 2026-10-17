@@ -40,6 +40,12 @@ const FIELD_LABELS: Record<string, string> = {
   firmName: "Firm",
   contact: "Contact",
   auditDeadline: "Audit deadline",
+  year: "Financial year",
+  stage: "Stage",
+  hours: "Hours",
+  progressNote: "Progress note",
+  nextAction: "Next action",
+  reviewNote: "Review note",
 };
 
 function formatValue(field: string, value: unknown): string {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { NoPermission } from "@/components/no-permission";
@@ -16,6 +17,10 @@ import { clientPeopleOptions } from "@/lib/clients/queries";
 import { requireStaff } from "@/lib/current-staff";
 import { db } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
+import { stageLabel } from "@/lib/jobs/stages";
+import { canCreateAuditJob, isAuditable } from "@/lib/jobs/service";
+import { createAuditJobAction } from "../../jobs/actions";
+import { CreateJobForm } from "../../jobs/job-forms";
 import {
   addExternalAuditorAction,
   removeExternalAuditorAction,
@@ -51,6 +56,7 @@ async function ClientDetails({ params }: { params: Promise<{ id: string }> }) {
       signingPartners: { include: { partner: { select: { name: true } } } },
       assignedStaff: { include: { staff: { select: { name: true } } } },
       externalAuditors: { orderBy: { createdAt: "asc" } },
+      auditJobs: { orderBy: { year: "desc" }, select: { id: true, year: true, stage: true } },
     },
   });
   if (!client) notFound();
@@ -114,6 +120,29 @@ async function ClientDetails({ params }: { params: Promise<{ id: string }> }) {
           <Detail label="Contact email" value={client.contactEmail} />
           <Detail label="Address" value={client.address} />
         </dl>
+      )}
+
+      {isAuditable(client) && (
+        <section className="flex max-w-2xl flex-col gap-3">
+          <h2 className="font-medium text-zinc-900">Audit jobs</h2>
+          {client.auditJobs.length === 0 && <p className="text-sm text-zinc-600">No audit jobs yet.</p>}
+          <ul className="flex flex-col gap-1 text-sm">
+            {client.auditJobs.map((job) => (
+              <li key={job.id}>
+                <Link href={`/jobs/${job.id}`} className="underline">
+                  FY {job.year}
+                </Link>{" "}
+                — {stageLabel(job.stage)}
+              </li>
+            ))}
+          </ul>
+          {canCreateAuditJob(viewer, client) && (
+            <CreateJobForm
+              action={createAuditJobAction.bind(null, client.id)}
+              defaultYear={new Date().getFullYear()}
+            />
+          )}
+        </section>
       )}
 
       <section className="flex max-w-2xl flex-col gap-3">
