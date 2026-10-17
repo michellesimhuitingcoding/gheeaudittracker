@@ -1,4 +1,5 @@
 import { raiseNoUpdateAlerts } from "@/lib/notifications/service";
+import { deactivateLeavers } from "@/lib/resignation/service";
 
 // Daily (vercel.json). Vercel sends CRON_SECRET as a bearer token.
 export async function GET(request: Request) {
@@ -7,5 +8,6 @@ export async function GET(request: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
   const raised = await raiseNoUpdateAlerts();
-  return Response.json({ raised });
+  const deactivated = await deactivateLeavers();
+  return Response.json({ raised, deactivated });
 }

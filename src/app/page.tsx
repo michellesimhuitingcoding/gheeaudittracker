@@ -5,6 +5,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import { clientListFilter } from "@/lib/clients/permissions";
 import { requireStaff } from "@/lib/current-staff";
 import { hasRole } from "@/lib/permissions";
+import { RECORD_LAST_DAY } from "@/lib/resignation/schema";
 import { ROLE_LABELS, VIEW_AUDIT_LOG } from "@/lib/roles";
 import { VIEW_HOURLY_RATES } from "@/lib/timecost/permissions";
 import { canUseTimesheet } from "@/lib/timesheet/permissions";
@@ -45,7 +46,7 @@ async function CurrentStaff() {
       <Link href="/leave" className="underline">
         Leave
       </Link>
-      {staff.role === "MASTER_ADMIN" && (
+      {hasRole(staff.role, RECORD_LAST_DAY) && (
         <Link href="/staff" className="underline">
           Staff
         </Link>

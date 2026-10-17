@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/current-staff";
 import type { FormState } from "@/lib/form-state";
+import { RECORD_LAST_DAY } from "@/lib/resignation/schema";
+import { setStaffLastDay } from "@/lib/resignation/service";
 import { createStaff, resetStaffPassword, setStaffActive, updateStaff } from "@/lib/staff-service";
 
 const MANAGE_STAFF = ["MASTER_ADMIN"] as const;
@@ -52,6 +54,17 @@ export async function resetPasswordAction(
 ): Promise<FormState> {
   const actor = await requireStaff(MANAGE_STAFF);
   const result = await resetStaffPassword(actor.id, id, formData.get("password"));
+  if (result?.ok) revalidatePath("/staff", "layout");
+  return result;
+}
+
+export async function setLastDayAction(
+  id: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const actor = await requireStaff(RECORD_LAST_DAY);
+  const result = await setStaffLastDay(actor.id, id, formData.get("lastDay"));
   if (result?.ok) revalidatePath("/staff", "layout");
   return result;
 }

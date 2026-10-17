@@ -9,8 +9,11 @@ const service = {
   resetStaffPassword: vi.fn(async () => ({ ok: true, message: "reset" })),
 };
 
+const resignation = { setStaffLastDay: vi.fn(async () => ({ ok: true, message: "recorded" })) };
+
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/staff-service", () => service);
+vi.mock("@/lib/resignation/service", () => resignation);
 vi.mock("@/lib/current-staff", () => ({
   requireStaff: vi.fn(async (allowed?: readonly string[]) => {
     if (allowed) assertRole(currentRole as never, allowed as never);
@@ -23,6 +26,7 @@ const form = new FormData();
 
 beforeEach(() => {
   Object.values(service).forEach((fn) => fn.mockClear());
+  resignation.setStaffLastDay.mockClear();
 });
 
 describe("staff actions", () => {
@@ -47,5 +51,19 @@ describe("staff actions", () => {
     expect(service.resetStaffPassword).toHaveBeenCalledWith("actor", "s1", null);
     expect(service.updateStaff).toHaveBeenCalledWith("actor", "s1", expect.any(Object));
     expect(service.setStaffActive).toHaveBeenCalledWith("actor", "s1", false);
+  });
+
+  it.each(["JUNIOR", "MANAGER", "PARTNER", "AUDIT_ADMIN_MANAGER"])("block %s from recording a last day", async (role) => {
+    currentRole = role;
+    await expect(actions.setLastDayAction("s1", null, form)).rejects.toThrow(ForbiddenError);
+    expect(resignation.setStaffLastDay).not.toHaveBeenCalled();
+  });
+
+  it.each(["ADMIN", "MASTER_ADMIN"])("let %s record a last day", async (role) => {
+    currentRole = role;
+    const data = new FormData();
+    data.set("lastDay", "2032-03-31");
+    await actions.setLastDayAction("s1", null, data);
+    expect(resignation.setStaffLastDay).toHaveBeenCalledWith("actor", "s1", "2032-03-31");
   });
 });
