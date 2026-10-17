@@ -6,6 +6,11 @@ export const AUDIT_ACTIONS = {
   STAFF_DEACTIVATED: "Deactivated staff",
   STAFF_REACTIVATED: "Reactivated staff",
   STAFF_PASSWORD_RESET: "Reset staff password",
+  CLIENT_CREATED: "Added client",
+  CLIENT_UPDATED: "Changed client details",
+  EXTERNAL_AUDITOR_ADDED: "Added external auditor",
+  EXTERNAL_AUDITOR_UPDATED: "Changed external auditor",
+  EXTERNAL_AUDITOR_REMOVED: "Removed external auditor",
   LOGIN_SUCCEEDED: "Logged in",
   LOGIN_FAILED: "Failed login",
 } as const;

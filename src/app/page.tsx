@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { LogoutButton } from "@/components/logout-button";
+import { clientListFilter } from "@/lib/clients/permissions";
 import { requireStaff } from "@/lib/current-staff";
 import { hasRole } from "@/lib/permissions";
 import { ROLE_LABELS, VIEW_AUDIT_LOG } from "@/lib/roles";
@@ -10,6 +11,11 @@ async function CurrentStaff() {
 
   return (
     <div className="flex items-center gap-4 text-sm text-zinc-700">
+      {clientListFilter(staff) && (
+        <Link href="/clients" className="underline">
+          Clients
+        </Link>
+      )}
       {staff.role === "MASTER_ADMIN" && (
         <Link href="/staff" className="underline">
           Staff

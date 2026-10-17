@@ -92,9 +92,10 @@ Form E job (employer return): Receive payroll → Prepare Form E → Manager rev
 - services[], dormant, status
 - contactName/Phone/Email, address
 - prepareFormEA: true/false
-- paymentStatus (paid/partial/unpaid/not invoiced)
-- externalAuditor: {firmName, contact, auditDeadline, status}
-- auditBy: "internal" | "external"
+- paymentStatus (paid/partial/unpaid/not invoiced) — Phase 1; set by Admin/Master Admin
+- auditBy: "internal" | "external" — Phase 1
+- signingPartners[]: one or more Partners (staff with login) who sign the audit report — Phase 1
+- externalAuditors[]: zero or more outside audit firms {firmName, contact, auditDeadline, status} — recorded only, no login — Phase 1
 
 ## 6. Document Received
 - Updated by: Audit Admin Assistant, Lead Audit Admin, Admin
@@ -212,6 +213,7 @@ portfolios, jobs (includes progress), timesheet, staff, settings, billing, payme
 - Login + all 10 roles
 - Server-enforced permissions (RULES.md 13)
 - Client Master Listing (grouped, search, filter)
+- Client payment status, audit by, signing partners, external auditors
 - Audit 9-stage tracker
 - Internal notes
 - My Progress (Manager)
@@ -234,7 +236,6 @@ portfolios, jobs (includes progress), timesheet, staff, settings, billing, payme
 - Calendar (unified)
 - Tax, Bookkeeping, Secretarial workflows
 - Site Work view
-- External auditor tracking
 - Absence tracking
 - Commission model
 
