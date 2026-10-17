@@ -3,6 +3,7 @@ import { clientListFilter } from "@/lib/clients/permissions";
 import { db } from "@/lib/db";
 import { ForbiddenError } from "@/lib/permissions";
 import { weekInMyt } from "@/lib/team/week";
+import { type Utilisation, monthToDateUtilisation } from "@/lib/timecost/service";
 
 export type TeamMember = {
   id: string;
@@ -12,6 +13,7 @@ export type TeamMember = {
   jobs: number;
   hoursThisWeek: number;
   lastCheckIn: Date | null;
+  utilisation: Utilisation;
 };
 
 const TEAM_ROLES: readonly Role[] = ["SENIOR", "JUNIOR"];
@@ -57,7 +59,7 @@ export async function teamOverview(viewer: { id: string; role: Role }, now = new
   const staffIds = people.map((person) => person.id);
   const week = weekInMyt(now);
 
-  const [hours, checkIns] = await Promise.all([
+  const [hours, checkIns, utilisation] = await Promise.all([
     db.timesheetEntry.groupBy({
       by: ["staffId"],
       where: { staffId: { in: staffIds }, jobId: { in: jobIds }, date: { gte: week.start, lt: week.end } },
@@ -68,6 +70,7 @@ export async function teamOverview(viewer: { id: string; role: Role }, now = new
       where: { staffId: { in: staffIds }, jobId: { in: jobIds } },
       _max: { createdAt: true },
     }),
+    monthToDateUtilisation(staffIds, now),
   ]);
   const hoursByStaff = new Map(hours.map((row) => [row.staffId, Number(row._sum.hours ?? 0)]));
   const checkInByStaff = new Map(checkIns.map((row) => [row.staffId, row._max.createdAt]));
@@ -81,6 +84,8 @@ export async function teamOverview(viewer: { id: string; role: Role }, now = new
       jobs: shared.reduce((sum, client) => sum + client.auditJobs.length, 0),
       hoursThisWeek: hoursByStaff.get(person.id) ?? 0,
       lastCheckIn: checkInByStaff.get(person.id) ?? null,
+      // Firm-wide billable hours, not only those on the Manager's clients.
+      utilisation: utilisation.get(person.id)!,
     };
   });
 }

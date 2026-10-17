@@ -6,6 +6,7 @@ import { clientListFilter } from "@/lib/clients/permissions";
 import { requireStaff } from "@/lib/current-staff";
 import { hasRole } from "@/lib/permissions";
 import { ROLE_LABELS, VIEW_AUDIT_LOG } from "@/lib/roles";
+import { VIEW_HOURLY_RATES } from "@/lib/timecost/permissions";
 import { canUseTimesheet } from "@/lib/timesheet/permissions";
 
 async function CurrentStaff() {
@@ -41,6 +42,11 @@ async function CurrentStaff() {
       {staff.role === "MASTER_ADMIN" && (
         <Link href="/staff" className="underline">
           Staff
+        </Link>
+      )}
+      {hasRole(staff.role, VIEW_HOURLY_RATES) && (
+        <Link href="/rates" className="underline">
+          Rates &amp; holidays
         </Link>
       )}
       {hasRole(staff.role, VIEW_AUDIT_LOG) && (

@@ -7,6 +7,8 @@ import type { FormState } from "@/lib/form-state";
 import { confirmPreAuditDeadline } from "@/lib/jobs/deadline";
 import { stageChangeFormValues } from "@/lib/jobs/schema";
 import { createAuditJob, moveAuditStage } from "@/lib/jobs/service";
+import { formText } from "@/lib/timecost/schema";
+import { setJobBudget } from "@/lib/timecost/service";
 
 export async function createAuditJobAction(clientId: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const actor = await requireStaff();
@@ -46,5 +48,15 @@ export async function confirmPreAuditDeadlineAction(
     revalidatePath(`/jobs/${jobId}`);
     revalidatePath("/calendar");
   }
+  return result;
+}
+
+export async function setJobBudgetAction(jobId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const actor = await requireStaff();
+  const result = await setJobBudget(actor, jobId, {
+    budgetHours: formText(formData, "budgetHours"),
+    budgetCost: formText(formData, "budgetCost"),
+  });
+  if (result.ok) revalidatePath(`/jobs/${jobId}`);
   return result;
 }
