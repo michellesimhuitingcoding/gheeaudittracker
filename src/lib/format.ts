@@ -61,6 +61,8 @@ const FIELD_LABELS: Record<string, string> = {
   hourlyRate: "Hourly rate",
   budgetHours: "Budget hours",
   budgetCost: "Budget cost",
+  staff: "Staff",
+  days: "Working days",
 };
 
 function formatValue(field: string, value: unknown): string {

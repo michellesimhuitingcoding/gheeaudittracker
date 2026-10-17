@@ -25,6 +25,8 @@ export const AUDIT_ACTIONS = {
   JOB_BUDGET_CHANGED: "Changed job budget",
   PUBLIC_HOLIDAY_ADDED: "Added public holiday",
   PUBLIC_HOLIDAY_REMOVED: "Removed public holiday",
+  LEAVE_ADDED: "Recorded leave",
+  LEAVE_REMOVED: "Removed leave",
   LOGIN_SUCCEEDED: "Logged in",
   LOGIN_FAILED: "Failed login",
 } as const;

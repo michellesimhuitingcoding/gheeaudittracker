@@ -42,9 +42,10 @@ export function monthGrid(calendar: CalendarMonth): Date[][] {
 
 export type CalendarEvent = {
   date: Date;
-  kind: "FORM_C" | "PRE_AUDIT";
+  kind: "FORM_C" | "PRE_AUDIT" | "LEAVE";
   label: string;
-  href: string;
+  // Leave links only for those who may change it.
+  href?: string;
 };
 
 export function eventsByDay(events: CalendarEvent[]): Map<string, CalendarEvent[]> {

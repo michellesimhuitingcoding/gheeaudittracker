@@ -19,19 +19,35 @@ export function monthToDateInMyt(now = new Date()): { start: Date; end: Date } {
   return { start, end: new Date(new Date(`${today}T00:00:00Z`).getTime() + DAY) };
 }
 
-// Weekdays in [start, end) that are not public holidays (YYYY-MM-DD).
+// A weekday that is not a public holiday (YYYY-MM-DD).
+export function isWorkingDay(date: Date, holidays: ReadonlySet<string>): boolean {
+  const weekday = date.getUTCDay();
+  return weekday !== 0 && weekday !== 6 && !holidays.has(isoDate(date));
+}
+
+// Weekdays in [start, end) that are not public holidays.
 export function workingDays(start: Date, end: Date, holidays: ReadonlySet<string>): number {
   let days = 0;
   for (let time = start.getTime(); time < end.getTime(); time += DAY) {
-    const date = new Date(time);
-    const weekday = date.getUTCDay();
-    if (weekday !== 0 && weekday !== 6 && !holidays.has(isoDate(date))) days += 1;
+    if (isWorkingDay(new Date(time), holidays)) days += 1;
   }
   return days;
 }
 
 export function availableHours(start: Date, end: Date, holidays: ReadonlySet<string>): number {
   return workingDays(start, end, holidays) * STANDARD_HOURS_PER_DAY;
+}
+
+// Leave hours that fall on working days, at most a standard day per date.
+// Leave on a weekend or public holiday is already outside available hours.
+export function leaveHoursOnWorkingDays(
+  entries: readonly { date: Date; hours: number }[],
+  holidays: ReadonlySet<string>,
+): number {
+  const hundredths = entries
+    .filter((entry) => isWorkingDay(entry.date, holidays))
+    .reduce((sum, entry) => sum + Math.round(Math.min(entry.hours, STANDARD_HOURS_PER_DAY) * 100), 0);
+  return hundredths / 100;
 }
 
 // Billable hours ÷ available hours, as a whole percentage. Null when there

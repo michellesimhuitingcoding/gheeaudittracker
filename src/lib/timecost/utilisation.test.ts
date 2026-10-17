@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { availableHours, monthToDateInMyt, utilisationPercent, workingDays } from "@/lib/timecost/utilisation";
+import {
+  availableHours,
+  leaveHoursOnWorkingDays,
+  monthToDateInMyt,
+  utilisationPercent,
+  workingDays,
+} from "@/lib/timecost/utilisation";
 
 const day = (value: string) => new Date(`${value}T00:00:00Z`);
 
@@ -39,5 +45,24 @@ describe("utilisation", () => {
 
   it("is null with no available hours", () => {
     expect(utilisationPercent(4, 0)).toBeNull();
+  });
+});
+
+describe("leaveHoursOnWorkingDays", () => {
+  it("adds whole and part days on working days", () => {
+    const leave = [
+      { date: day("2026-10-05"), hours: 8 },
+      { date: day("2026-10-06"), hours: 4 },
+      { date: day("2026-10-08"), hours: 1.5 },
+    ];
+    expect(leaveHoursOnWorkingDays(leave, new Set())).toBe(13.5);
+  });
+
+  it("ignores leave on weekends and public holidays", () => {
+    const leave = [
+      { date: day("2026-10-07"), hours: 8 },
+      { date: day("2026-10-10"), hours: 8 },
+    ];
+    expect(leaveHoursOnWorkingDays(leave, new Set(["2026-10-07"]))).toBe(0);
   });
 });

@@ -7,7 +7,13 @@ import { isoDate } from "@/lib/deadlines";
 import type { FormState } from "@/lib/form-state";
 import { EDIT_HOURLY_RATES, MANAGE_PUBLIC_HOLIDAYS, canSetJobBudget } from "@/lib/timecost/permissions";
 import { hourlyRateSchema, jobBudgetSchema, publicHolidaySchema } from "@/lib/timecost/schema";
-import { BILLABLE_CATEGORIES, availableHours, monthToDateInMyt, utilisationPercent } from "@/lib/timecost/utilisation";
+import {
+  BILLABLE_CATEGORIES,
+  availableHours,
+  leaveHoursOnWorkingDays,
+  monthToDateInMyt,
+  utilisationPercent,
+} from "@/lib/timecost/utilisation";
 
 type Actor = { id: string; role: Role };
 type Result = Exclude<FormState, null>;
@@ -131,13 +137,13 @@ export async function removePublicHoliday(actor: Actor, holidayId: string): Prom
 export type Utilisation = { billableHours: number; availableHours: number; percent: number | null };
 
 // Month-to-date utilisation per person: billable hours (Work + OT on a job)
-// ÷ available hours (8 per weekday, less public holidays).
+// ÷ available hours (8 per weekday, less public holidays and the person's leave).
 export async function monthToDateUtilisation(
   staffIds: readonly string[],
   now = new Date(),
 ): Promise<Map<string, Utilisation>> {
   const period = monthToDateInMyt(now);
-  const [holidays, billable] = await Promise.all([
+  const [holidays, billable, leave] = await Promise.all([
     db.publicHoliday.findMany({ where: { date: { gte: period.start, lt: period.end } }, select: { date: true } }),
     db.timesheetEntry.groupBy({
       by: ["staffId"],
@@ -149,13 +155,23 @@ export async function monthToDateUtilisation(
       },
       _sum: { hours: true },
     }),
+    db.leaveEntry.findMany({
+      where: { staffId: { in: [...staffIds] }, date: { gte: period.start, lt: period.end } },
+      select: { staffId: true, date: true, hours: true },
+    }),
   ]);
-  const available = availableHours(period.start, period.end, new Set(holidays.map((row) => isoDate(row.date))));
+  const holidayDates = new Set(holidays.map((row) => isoDate(row.date)));
+  const working = availableHours(period.start, period.end, holidayDates);
   const hoursByStaff = new Map(billable.map((row) => [row.staffId, Number(row._sum.hours ?? 0)]));
+  const leaveByStaff = new Map<string, { date: Date; hours: number }[]>();
+  for (const row of leave) {
+    leaveByStaff.set(row.staffId, [...(leaveByStaff.get(row.staffId) ?? []), { date: row.date, hours: Number(row.hours) }]);
+  }
 
   return new Map(
     staffIds.map((id) => {
       const billableHours = hoursByStaff.get(id) ?? 0;
+      const available = Math.max(0, working - leaveHoursOnWorkingDays(leaveByStaff.get(id) ?? [], holidayDates));
       return [id, { billableHours, availableHours: available, percent: utilisationPercent(billableHours, available) }];
     }),
   );
