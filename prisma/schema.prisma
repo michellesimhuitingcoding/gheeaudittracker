@@ -40,6 +40,8 @@ model Staff {
   signingPartnerClients ClientSigningPartner[]
   seniorClients         Client[]               @relation("ClientSenior")
   assignedClients       ClientAssignedStaff[]
+  createdAuditJobs      AuditJob[]
+  auditStageChanges     AuditStageChange[]
 }
 
 // WORKFLOW.md §9: who, when, what, from, to. Append-only — the database
@@ -130,6 +132,7 @@ model Client {
   signingPartners  ClientSigningPartner[]
   assignedStaff    ClientAssignedStaff[]
   externalAuditors ExternalAuditor[]
+  auditJobs        AuditJob[]
 
   @@index([name])
   @@index([managerId])
@@ -171,4 +174,54 @@ model ExternalAuditor {
   createdAt     DateTime  @default(now())
 
   @@index([clientId])
+}
+
+// WORKFLOW.md §3 audit track (Sdn Bhd only), in order.
+enum AuditStage {
+  DOCUMENTS_RECEIVED
+  PRE_AUDIT
+  READY
+  IN_PROGRESS
+  MANAGER_REVIEW
+  PARTNER_REVIEW
+  CLEAR_REVIEW
+  FINAL_REVIEW
+  FINALISATION
+}
+
+// One audit per client per financial year (the year the FYE falls in).
+model AuditJob {
+  id          String      @id @default(cuid())
+  clientId    String
+  client      Client      @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  year        Int
+  // Null until documents are received.
+  stage       AuditStage?
+  createdById String
+  createdBy   Staff       @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  stageChanges AuditStageChange[]
+
+  @@unique([clientId, year])
+  @@index([stage])
+}
+
+// WORKFLOW.md §7 stage change gate: note + hours + next action (+ review note at 5, 6).
+model AuditStageChange {
+  id           String      @id @default(cuid())
+  jobId        String
+  job          AuditJob    @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  fromStage    AuditStage?
+  toStage      AuditStage
+  byId         String
+  by           Staff       @relation(fields: [byId], references: [id], onDelete: Restrict)
+  at           DateTime    @default(now())
+  progressNote String
+  hours        Decimal     @db.Decimal(6, 2)
+  nextAction   String
+  reviewNote   String?
+
+  @@index([jobId, at])
 }

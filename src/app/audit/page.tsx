@@ -56,10 +56,17 @@ async function AuditLog({ searchParams }: { searchParams: Promise<Search> }) {
     select: { id: true, name: true },
   });
   const clientNames = new Map(clients.map((client) => [client.id, client.name]));
+  const jobIds = [...new Set(entries.filter((entry) => entry.entityType === "AuditJob").map((entry) => entry.entityId))];
+  const jobs = await db.auditJob.findMany({
+    where: { id: { in: jobIds.filter((id): id is string => Boolean(id)) } },
+    select: { id: true, year: true, client: { select: { name: true } } },
+  });
+  const jobNames = new Map(jobs.map((job) => [job.id, `${job.client.name} · FY ${job.year}`]));
   const recordName = (entityType: string | null, entityId: string | null) => {
     if (!entityId) return "—";
     if (entityType === "Staff") return names.get(entityId) ?? "—";
     if (entityType === "Client") return clientNames.get(entityId) ?? "—";
+    if (entityType === "AuditJob") return jobNames.get(entityId) ?? "—";
     return "—";
   };
 
