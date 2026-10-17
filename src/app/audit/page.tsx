@@ -50,6 +50,18 @@ async function AuditLog({ searchParams }: { searchParams: Promise<Search> }) {
   ]);
   const hasOlder = entries.length > PAGE_SIZE;
   const names = new Map(staff.map((member) => [member.id, member.name]));
+  const clientIds = [...new Set(entries.filter((entry) => entry.entityType === "Client").map((entry) => entry.entityId))];
+  const clients = await db.client.findMany({
+    where: { id: { in: clientIds.filter((id): id is string => Boolean(id)) } },
+    select: { id: true, name: true },
+  });
+  const clientNames = new Map(clients.map((client) => [client.id, client.name]));
+  const recordName = (entityType: string | null, entityId: string | null) => {
+    if (!entityId) return "—";
+    if (entityType === "Staff") return names.get(entityId) ?? "—";
+    if (entityType === "Client") return clientNames.get(entityId) ?? "—";
+    return "—";
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -98,7 +110,7 @@ async function AuditLog({ searchParams }: { searchParams: Promise<Search> }) {
               <td className="p-3">{entry.actor?.name ?? "—"}</td>
               <td className="p-3">{isAuditAction(entry.action) ? AUDIT_ACTIONS[entry.action] : entry.action}</td>
               <td className="p-3">
-                {entry.entityType === "Staff" && entry.entityId ? names.get(entry.entityId) ?? "—" : "—"}
+                {recordName(entry.entityType, entry.entityId)}
               </td>
               <td className="p-3">
                 {describeChanges(entry.changes).map((line) => (

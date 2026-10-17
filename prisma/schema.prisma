@@ -33,7 +33,11 @@ model Staff {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  auditEntries AuditLog[]
+  auditEntries          AuditLog[]
+  ownedClients          Client[]               @relation("ClientOwner")
+  managedClients        Client[]               @relation("ClientManager")
+  partneredClients      Client[]               @relation("ClientPartner")
+  signingPartnerClients ClientSigningPartner[]
 }
 
 // WORKFLOW.md §9: who, when, what, from, to. Append-only — the database
@@ -54,4 +58,100 @@ model AuditLog {
   @@index([actorId, at])
   @@index([entityType, entityId, at])
   @@index([action, at])
+}
+
+// WORKFLOW.md §2 entity types.
+enum EntityType {
+  SDN_BHD
+  PLT
+  ENTERPRISE
+  PARTNERSHIP
+  INDIVIDUAL
+}
+
+enum Service {
+  AUDIT
+  TAX
+  BOOKKEEPING
+  SECRETARIAL
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PaymentStatus {
+  PAID
+  PARTIAL
+  UNPAID
+  NOT_INVOICED
+}
+
+enum AuditBy {
+  INTERNAL
+  EXTERNAL
+}
+
+// WORKFLOW.md §5 client fields.
+model Client {
+  id                String        @id @default(cuid())
+  name              String
+  entityType        EntityType
+  regNo             String?       @unique
+  tin               String?       @unique
+  fyeDay            Int
+  fyeMonth          Int
+  incorporationDate DateTime?     @db.Date
+  // "Sourced by" — a Manager or Partner, locked after intake.
+  ownerId           String
+  owner             Staff         @relation("ClientOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  managerId         String?
+  manager           Staff?        @relation("ClientManager", fields: [managerId], references: [id], onDelete: Restrict)
+  partnerId         String?
+  partner           Staff?        @relation("ClientPartner", fields: [partnerId], references: [id], onDelete: Restrict)
+  services          Service[]
+  dormant           Boolean       @default(false)
+  status            ClientStatus  @default(ACTIVE)
+  prepareFormEA     Boolean       @default(false)
+  paymentStatus     PaymentStatus @default(NOT_INVOICED)
+  auditBy           AuditBy?
+  contactName       String?
+  contactPhone      String?
+  contactEmail      String?
+  address           String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  signingPartners  ClientSigningPartner[]
+  externalAuditors ExternalAuditor[]
+
+  @@index([name])
+  @@index([managerId])
+  @@index([partnerId])
+  @@index([ownerId])
+}
+
+// Partners (staff with login) who sign the client's audit report.
+model ClientSigningPartner {
+  clientId  String
+  client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  partnerId String
+  partner   Staff  @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+
+  @@id([clientId, partnerId])
+}
+
+// Outside audit firms — recorded only, they never log in.
+model ExternalAuditor {
+  id            String    @id @default(cuid())
+  clientId      String
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  firmName      String
+  contact       String?
+  auditDeadline DateTime? @db.Date
+  status        String?
+  createdAt     DateTime  @default(now())
+
+  @@index([clientId])
 }
