@@ -7,12 +7,30 @@ import { db } from "@/lib/db";
 import type { FormState } from "@/lib/form-state";
 import { createJobSchema, stageChangeSchema } from "@/lib/jobs/schema";
 import { checkStageMove, needsReviewNote, stageLabel } from "@/lib/jobs/stages";
+import type { JobPeople } from "@/lib/notifications/rules";
+import { notifyJobCreated, notifyStageChange } from "@/lib/notifications/service";
 
 type Actor = { id: string; role: Role };
 type Result = Exclude<FormState, null>;
 
 function invalid(error: z.ZodError): Result {
   return { ok: false, fieldErrors: z.flattenError(error).fieldErrors };
+}
+
+function jobPeople(client: {
+  managerId: string | null;
+  partnerId: string | null;
+  seniorId: string | null;
+  signingPartners: { partnerId: string }[];
+  assignedStaff: { staffId: string; staff: { role: Role } }[];
+}): JobPeople {
+  return {
+    managerId: client.managerId,
+    partnerId: client.partnerId,
+    seniorId: client.seniorId,
+    signingPartnerIds: client.signingPartners.map((row) => row.partnerId),
+    assignedStaff: client.assignedStaff.map((row) => ({ staffId: row.staffId, role: row.staff.role })),
+  };
 }
 
 export function canCreateAuditJob(viewer: Actor, client: { managerId: string | null }): boolean {
@@ -32,7 +50,16 @@ export async function createAuditJob(actor: Actor, clientId: string, input: unkn
     return await db.$transaction(async (tx) => {
       const client = await tx.client.findUnique({
         where: { id: clientId },
-        select: { name: true, entityType: true, services: true, managerId: true },
+        select: {
+          name: true,
+          entityType: true,
+          services: true,
+          managerId: true,
+          partnerId: true,
+          seniorId: true,
+          signingPartners: { select: { partnerId: true } },
+          assignedStaff: { select: { staffId: true, staff: { select: { role: true } } } },
+        },
       });
       if (!client) return { ok: false, error: "Client not found." };
       if (!canCreateAuditJob(actor, client)) {
@@ -50,6 +77,12 @@ export async function createAuditJob(actor: Actor, clientId: string, input: unkn
         entityId: job.id,
         changes: { year },
       });
+      await notifyJobCreated(
+        tx,
+        actor.id,
+        { id: job.id, year, clientId, clientName: client.name },
+        jobPeople(client),
+      );
       return { ok: true, message: `Audit for ${year} created.` };
     });
   } catch (error) {
@@ -69,7 +102,9 @@ export async function moveAuditStage(actor: Actor, jobId: string, input: unknown
     async (tx) => {
       const job = await tx.auditJob.findUnique({
         where: { id: jobId },
-        include: { client: { include: { signingPartners: true, assignedStaff: true } } },
+        include: {
+          client: { include: { signingPartners: true, assignedStaff: { include: { staff: { select: { role: true } } } } } },
+        },
       });
       if (!job) return { ok: false, error: "Audit job not found." };
 
@@ -113,6 +148,14 @@ export async function moveAuditStage(actor: Actor, jobId: string, input: unknown
           ...(change.reviewNote ? { reviewNote: change.reviewNote } : {}),
         },
       });
+      await notifyStageChange(
+        tx,
+        actor.id,
+        { id: jobId, year: job.year, clientId: job.clientId, clientName: job.client.name },
+        jobPeople(job.client),
+        job.stage,
+        check.to,
+      );
       return { ok: true, message: `Moved to ${stageLabel(check.to)}.` };
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
+import { NotificationBell } from "@/components/notification-bell";
 
 export function PageShell({ title, back, children }: { title: string; back?: string; children: ReactNode }) {
   return (
@@ -10,7 +11,12 @@ export function PageShell({ title, back, children }: { title: string; back?: str
             Back
           </Link>
         )}
-        <h1 className="text-xl font-semibold text-zinc-900">{title}</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-zinc-900">{title}</h1>
+          <Suspense fallback={null}>
+            <NotificationBell />
+          </Suspense>
+        </div>
       </header>
       {children}
     </main>

@@ -44,6 +44,7 @@ model Staff {
   auditStageChanges     AuditStageChange[]
   timesheetEntries      TimesheetEntry[]
   jobCheckIns           JobCheckIn[]
+  notifications         Notification[]
 }
 
 // WORKFLOW.md §9: who, when, what, from, to. Append-only — the database
@@ -135,6 +136,7 @@ model Client {
   assignedStaff    ClientAssignedStaff[]
   externalAuditors ExternalAuditor[]
   auditJobs        AuditJob[]
+  notifications    Notification[]
 
   @@index([name])
   @@index([managerId])
@@ -207,6 +209,7 @@ model AuditJob {
   stageChanges     AuditStageChange[]
   timesheetEntries TimesheetEntry[]
   checkIns         JobCheckIn[]
+  notifications    Notification[]
 
   @@unique([clientId, year])
   @@index([stage])
@@ -268,4 +271,30 @@ model JobCheckIn {
 
   @@unique([jobId, staffId, date])
   @@index([jobId, createdAt])
+}
+
+// WORKFLOW.md §12. The tab (Action Required / FYI) follows from the kind.
+enum NotificationKind {
+  YOUR_TURN
+  NO_UPDATE_MANAGER
+  NO_UPDATE_PARTNER
+  STAGE_CHANGED
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  recipient   Staff            @relation(fields: [recipientId], references: [id], onDelete: Restrict)
+  clientId    String
+  client      Client           @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  jobId       String?
+  job         AuditJob?        @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  kind        NotificationKind
+  message     String
+  createdAt   DateTime         @default(now())
+  // Action Required: set when the work is done. FYI: set when read.
+  closedAt    DateTime?
+
+  @@index([recipientId, closedAt])
+  @@index([jobId, kind, closedAt])
 }

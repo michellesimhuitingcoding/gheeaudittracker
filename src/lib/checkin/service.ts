@@ -5,6 +5,7 @@ import { canViewClient } from "@/lib/clients/permissions";
 import { db } from "@/lib/db";
 import type { FormState } from "@/lib/form-state";
 import { todayInMyt } from "@/lib/format";
+import { closeNoUpdateAlerts } from "@/lib/notifications/service";
 
 type Actor = { id: string; role: Role };
 type Result = Exclude<FormState, null>;
@@ -31,6 +32,7 @@ export async function checkIn(actor: Actor, jobId: string, now = new Date()): Pr
     });
     if (created.count === 0) return { ok: true, message: "You already checked in today." };
 
+    await closeNoUpdateAlerts(tx, jobId);
     await recordAudit(tx, {
       action: "JOB_CHECKED_IN",
       actorId: actor.id,
