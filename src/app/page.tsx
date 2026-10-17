@@ -18,6 +18,11 @@ async function CurrentStaff() {
           Clients
         </Link>
       )}
+      {staff.role === "MANAGER" && (
+        <Link href="/progress" className="underline">
+          My Progress
+        </Link>
+      )}
       {canUseTimesheet(staff.role) && (
         <Link href="/timesheet" className="underline">
           Timesheet
