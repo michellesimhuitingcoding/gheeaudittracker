@@ -6,7 +6,9 @@ import { NoPermission } from "@/components/no-permission";
 import { PageShell } from "@/components/page-shell";
 import { UtilisationCell } from "@/components/utilisation";
 import { requireStaff } from "@/lib/current-staff";
+import { formatDate } from "@/lib/deadlines";
 import { formatDateTime } from "@/lib/format";
+import { leaveLabel } from "@/lib/leave/leave";
 import { ROLE_LABELS } from "@/lib/roles";
 import { teamOverview } from "@/lib/team/service";
 
@@ -23,7 +25,7 @@ async function Team() {
     <div className="flex flex-col gap-3">
       <p className="text-sm text-zinc-600">
         Seniors and Juniors currently assigned to your clients. Utilisation is billable hours (Work and Overtime on
-        any job) ÷ available hours (8 per weekday, less public holidays).
+        any job) ÷ available hours (8 per weekday, less public holidays and leave).
       </p>
       <table className="w-full max-w-6xl border-collapse bg-white text-left text-sm">
         <thead>
@@ -35,6 +37,7 @@ async function Team() {
             <th className="p-3 font-medium">Hours this week</th>
             <th className="p-3 font-medium">Utilisation (month to date)</th>
             <th className="p-3 font-medium">Last check-in (MYT)</th>
+            <th className="p-3 font-medium">Leave this week</th>
           </tr>
         </thead>
         <tbody>
@@ -68,11 +71,24 @@ async function Team() {
                   <span className="text-zinc-600">No check-ins</span>
                 )}
               </td>
+              <td className="p-3">
+                {member.leaveThisWeek.length > 0 ? (
+                  <ul className="flex flex-col gap-1">
+                    {member.leaveThisWeek.map((leave) => (
+                      <li key={leave.date.toISOString()}>
+                        {formatDate(leave.date)} · {leaveLabel(leave.hours)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span className="text-zinc-600">—</span>
+                )}
+              </td>
             </tr>
           ))}
           {team.length === 0 && (
             <tr>
-              <td colSpan={7} className="p-3 text-zinc-600">
+              <td colSpan={8} className="p-3 text-zinc-600">
                 No Seniors or Juniors are assigned to your clients.
               </td>
             </tr>

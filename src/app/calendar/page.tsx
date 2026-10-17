@@ -16,6 +16,8 @@ import { clientListFilter } from "@/lib/clients/permissions";
 import { requireStaff } from "@/lib/current-staff";
 import { db } from "@/lib/db";
 import { formCApplies, formCDuesBetween, isoDate, todayDate } from "@/lib/deadlines";
+import { leaveLabel } from "@/lib/leave/leave";
+import { canManageLeave } from "@/lib/leave/permissions";
 
 export const metadata: Metadata = { title: "Calendar" };
 
@@ -25,6 +27,7 @@ const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const EVENT_STYLES: Record<CalendarEvent["kind"], string> = {
   FORM_C: "border-red-200 bg-red-50 text-red-800",
   PRE_AUDIT: "border-blue-200 bg-blue-50 text-blue-800",
+  LEAVE: "border-amber-200 bg-amber-50 text-amber-800",
 };
 
 async function Calendar({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -37,7 +40,7 @@ async function Calendar({ searchParams }: { searchParams: Promise<Record<string,
   const month = parseMonth(Array.isArray(raw) ? raw[0] : raw, today);
   const { from, to } = monthRange(month);
 
-  const [clients, jobs] = await Promise.all([
+  const [clients, jobs, leave] = await Promise.all([
     db.client.findMany({
       where: { AND: [visible, { status: "ACTIVE", entityType: { in: ["SDN_BHD", "PLT"] } }] },
       select: { id: true, name: true, entityType: true, fyeDay: true, fyeMonth: true },
@@ -45,6 +48,10 @@ async function Calendar({ searchParams }: { searchParams: Promise<Record<string,
     db.auditJob.findMany({
       where: { client: visible, preAuditDeadline: { gte: from, lte: to } },
       select: { id: true, year: true, preAuditDeadline: true, client: { select: { name: true } } },
+    }),
+    db.leaveEntry.findMany({
+      where: { date: { gte: from, lte: to }, staff: { active: true } },
+      select: { staffId: true, date: true, hours: true, staff: { select: { name: true } } },
     }),
   ]);
 
@@ -64,6 +71,12 @@ async function Calendar({ searchParams }: { searchParams: Promise<Record<string,
       kind: "PRE_AUDIT" as const,
       label: `Pre-audit · ${job.client.name} FY ${job.year}`,
       href: `/jobs/${job.id}`,
+    })),
+    ...leave.map((entry) => ({
+      date: entry.date,
+      kind: "LEAVE" as const,
+      label: `${leaveLabel(Number(entry.hours))} · ${entry.staff.name}`,
+      href: canManageLeave(viewer, entry.staffId) ? `/leave?staff=${entry.staffId}` : undefined,
     })),
   ];
   const byDay = eventsByDay(events);
@@ -85,6 +98,7 @@ async function Calendar({ searchParams }: { searchParams: Promise<Record<string,
         <div className="ml-auto flex gap-3 text-xs">
           <span className={`rounded border px-2 py-0.5 ${EVENT_STYLES.FORM_C}`}>Form C due (statutory)</span>
           <span className={`rounded border px-2 py-0.5 ${EVENT_STYLES.PRE_AUDIT}`}>Pre-audit deadline</span>
+          <span className={`rounded border px-2 py-0.5 ${EVENT_STYLES.LEAVE}`}>Leave</span>
         </div>
       </div>
 
@@ -110,16 +124,26 @@ async function Calendar({ searchParams }: { searchParams: Promise<Record<string,
                   {day.getUTCDate()}
                 </span>
                 {inMonth &&
-                  byDay.get(key)?.map((event) => (
-                    <Link
-                      key={`${event.kind}-${event.href}`}
-                      href={event.href}
-                      className={`truncate rounded border px-1.5 py-0.5 text-xs ${EVENT_STYLES[event.kind]}`}
-                      title={event.label}
-                    >
-                      {event.label}
-                    </Link>
-                  ))}
+                  byDay.get(key)?.map((event) =>
+                    event.href ? (
+                      <Link
+                        key={`${event.kind}-${event.href ?? event.label}`}
+                        href={event.href}
+                        className={`truncate rounded border px-1.5 py-0.5 text-xs ${EVENT_STYLES[event.kind]}`}
+                        title={event.label}
+                      >
+                        {event.label}
+                      </Link>
+                    ) : (
+                      <span
+                        key={`${event.kind}-${event.href ?? event.label}`}
+                        className={`truncate rounded border px-1.5 py-0.5 text-xs ${EVENT_STYLES[event.kind]}`}
+                        title={event.label}
+                      >
+                        {event.label}
+                      </span>
+                    ),
+                  )}
               </div>
             );
           })}

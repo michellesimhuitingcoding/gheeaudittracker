@@ -42,6 +42,9 @@ async function CurrentStaff() {
           Timesheet
         </Link>
       )}
+      <Link href="/leave" className="underline">
+        Leave
+      </Link>
       {staff.role === "MASTER_ADMIN" && (
         <Link href="/staff" className="underline">
           Staff

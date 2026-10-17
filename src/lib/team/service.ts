@@ -14,6 +14,7 @@ export type TeamMember = {
   hoursThisWeek: number;
   lastCheckIn: Date | null;
   utilisation: Utilisation;
+  leaveThisWeek: { date: Date; hours: number }[];
 };
 
 const TEAM_ROLES: readonly Role[] = ["SENIOR", "JUNIOR"];
@@ -59,7 +60,7 @@ export async function teamOverview(viewer: { id: string; role: Role }, now = new
   const staffIds = people.map((person) => person.id);
   const week = weekInMyt(now);
 
-  const [hours, checkIns, utilisation] = await Promise.all([
+  const [hours, checkIns, utilisation, leave] = await Promise.all([
     db.timesheetEntry.groupBy({
       by: ["staffId"],
       where: { staffId: { in: staffIds }, jobId: { in: jobIds }, date: { gte: week.start, lt: week.end } },
@@ -71,6 +72,11 @@ export async function teamOverview(viewer: { id: string; role: Role }, now = new
       _max: { createdAt: true },
     }),
     monthToDateUtilisation(staffIds, now),
+    db.leaveEntry.findMany({
+      where: { staffId: { in: staffIds }, date: { gte: week.start, lt: week.end } },
+      orderBy: { date: "asc" },
+      select: { staffId: true, date: true, hours: true },
+    }),
   ]);
   const hoursByStaff = new Map(hours.map((row) => [row.staffId, Number(row._sum.hours ?? 0)]));
   const checkInByStaff = new Map(checkIns.map((row) => [row.staffId, row._max.createdAt]));
@@ -86,6 +92,9 @@ export async function teamOverview(viewer: { id: string; role: Role }, now = new
       lastCheckIn: checkInByStaff.get(person.id) ?? null,
       // Firm-wide billable hours, not only those on the Manager's clients.
       utilisation: utilisation.get(person.id)!,
+      leaveThisWeek: leave
+        .filter((row) => row.staffId === person.id)
+        .map((row) => ({ date: row.date, hours: Number(row.hours) })),
     };
   });
 }

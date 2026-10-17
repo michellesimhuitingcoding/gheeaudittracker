@@ -51,6 +51,8 @@ model Staff {
   jobCheckIns           JobCheckIn[]
   notifications         Notification[]
   internalNotes         InternalNote[]
+  leaveEntries          LeaveEntry[]
+  createdLeaveEntries   LeaveEntry[]           @relation("LeaveCreatedBy")
 }
 
 // WORKFLOW.md §9: who, when, what, from, to. Append-only — the database
@@ -357,4 +359,21 @@ model InternalNote {
 
   @@index([clientId, createdAt])
   @@index([jobId, createdAt])
+}
+
+// Leave: hours away from the office on one date (8 = a whole day). Taken off
+// available hours for utilisation. One row per person per date.
+model LeaveEntry {
+  id          String   @id @default(cuid())
+  staffId     String
+  staff       Staff    @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  date        DateTime @db.Date
+  hours       Decimal  @db.Decimal(4, 2)
+  note        String?
+  createdById String
+  createdBy   Staff    @relation("LeaveCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+
+  @@unique([staffId, date])
+  @@index([date])
 }
