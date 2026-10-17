@@ -1,0 +1,51 @@
+import type { Prisma } from "@/generated/prisma/client";
+
+export const AUDIT_ACTIONS = {
+  STAFF_CREATED: "Added staff",
+  STAFF_UPDATED: "Changed staff details",
+  STAFF_DEACTIVATED: "Deactivated staff",
+  STAFF_REACTIVATED: "Reactivated staff",
+  STAFF_PASSWORD_RESET: "Reset staff password",
+  LOGIN_SUCCEEDED: "Logged in",
+  LOGIN_FAILED: "Failed login",
+} as const;
+
+export type AuditAction = keyof typeof AUDIT_ACTIONS;
+
+export function isAuditAction(value: unknown): value is AuditAction {
+  return typeof value === "string" && Object.hasOwn(AUDIT_ACTIONS, value);
+}
+
+export type FieldChanges = Record<string, { from: unknown; to: unknown }>;
+
+// Fields that differ between before and after, limited to `fields`.
+export function diffFields<T extends object>(before: T, after: Partial<T>, fields: readonly (keyof T)[]): FieldChanges {
+  const changes: FieldChanges = {};
+  for (const field of fields) {
+    if (!(field in after)) continue;
+    if (before[field] !== after[field]) {
+      changes[String(field)] = { from: before[field], to: after[field] };
+    }
+  }
+  return changes;
+}
+
+type AuditWriter = Pick<Prisma.TransactionClient, "auditLog">;
+
+export function recordAudit(
+  client: AuditWriter,
+  entry: {
+    action: AuditAction;
+    actorId?: string | null;
+    entityType?: string;
+    entityId?: string;
+    // Plain values only (strings, numbers, booleans, null).
+    changes?: Record<string, unknown>;
+    detail?: string;
+  },
+) {
+  const { changes, ...rest } = entry;
+  return client.auditLog.create({
+    data: { ...rest, changes: changes as Prisma.InputJsonValue | undefined },
+  });
+}

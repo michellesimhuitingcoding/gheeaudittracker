@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
+import { diffFields, recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import type { FormState } from "@/lib/form-state";
 import { hashPassword } from "@/lib/password";
@@ -22,6 +23,9 @@ export function uniqueConflict(error: unknown): FormState {
   return { ok: false, fieldErrors: { [field]: [UNIQUE_FIELD_MESSAGES[field]] } };
 }
 
+// Fields recorded in the audit trail. Never include passwordHash.
+const AUDITED_FIELDS = ["staffId", "name", "email", "role"] as const;
+
 function invalid(error: z.ZodError): FormState {
   return { ok: false, fieldErrors: z.flattenError(error).fieldErrors };
 }
@@ -30,13 +34,23 @@ function serializable<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) {
   return db.$transaction(fn, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
-export async function createStaff(input: unknown): Promise<FormState> {
+export async function createStaff(actorId: string, input: unknown): Promise<FormState> {
   const parsed = createStaffSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
   const { password, ...details } = parsed.data;
+  const passwordHash = await hashPassword(password);
 
   try {
-    await db.staff.create({ data: { ...details, passwordHash: await hashPassword(password) } });
+    await db.$transaction(async (tx) => {
+      const staff = await tx.staff.create({ data: { ...details, passwordHash } });
+      await recordAudit(tx, {
+        action: "STAFF_CREATED",
+        actorId,
+        entityType: "Staff",
+        entityId: staff.id,
+        changes: details,
+      });
+    });
   } catch (error) {
     const conflict = uniqueConflict(error);
     if (conflict) return conflict;
@@ -65,7 +79,11 @@ export async function updateStaff(actorId: string, id: string, input: unknown): 
       });
       if (ruleError) return { ok: false, error: ruleError };
 
+      const changes = diffFields(before, details, AUDITED_FIELDS);
+      if (Object.keys(changes).length === 0) return { ok: true, message: "No changes to save." };
+
       await tx.staff.update({ where: { id }, data: details });
+      await recordAudit(tx, { action: "STAFF_UPDATED", actorId, entityType: "Staff", entityId: id, changes });
       return { ok: true, message: "Changes saved." };
     });
   } catch (error) {
@@ -90,21 +108,31 @@ export async function setStaffActive(actorId: string, id: string, active: boolea
     });
     if (ruleError) return { ok: false, error: ruleError };
 
+    if (before.active === active) return { ok: true, message: "No change." };
+
     await tx.staff.update({ where: { id }, data: { active } });
+    await recordAudit(tx, {
+      action: active ? "STAFF_REACTIVATED" : "STAFF_DEACTIVATED",
+      actorId,
+      entityType: "Staff",
+      entityId: id,
+      changes: { active: { from: before.active, to: active } },
+    });
     return { ok: true, message: active ? "Staff member reactivated." : "Staff member deactivated." };
   });
 }
 
-export async function resetStaffPassword(id: string, password: unknown): Promise<FormState> {
+export async function resetStaffPassword(actorId: string, id: string, password: unknown): Promise<FormState> {
   const parsed = passwordSchema.safeParse(password);
   if (!parsed.success) {
     return { ok: false, fieldErrors: { password: parsed.error.issues.map((issue) => issue.message) } };
   }
+  const passwordHash = await hashPassword(parsed.data);
 
-  const result = await db.staff.updateMany({
-    where: { id },
-    data: { passwordHash: await hashPassword(parsed.data) },
+  return db.$transaction(async (tx) => {
+    const result = await tx.staff.updateMany({ where: { id }, data: { passwordHash } });
+    if (result.count === 0) return { ok: false, error: "Staff member not found." };
+    await recordAudit(tx, { action: "STAFF_PASSWORD_RESET", actorId, entityType: "Staff", entityId: id });
+    return { ok: true, message: "Password reset. Give the new password to the staff member." };
   });
-  if (result.count === 0) return { ok: false, error: "Staff member not found." };
-  return { ok: true, message: "Password reset. Give the new password to the staff member." };
 }

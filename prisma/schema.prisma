@@ -32,4 +32,26 @@ model Staff {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  auditEntries AuditLog[]
+}
+
+// WORKFLOW.md §9: who, when, what, from, to. Append-only — the database
+// rejects UPDATE, DELETE and TRUNCATE (see the add_audit_log migration).
+model AuditLog {
+  id         String   @id @default(cuid())
+  at         DateTime @default(now())
+  actorId    String?
+  actor      Staff?   @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  action     String
+  entityType String?
+  entityId   String?
+  // { field: { from, to } } for updates; { field: value } snapshot for creates.
+  changes    Json?
+  detail     String?
+
+  @@index([at])
+  @@index([actorId, at])
+  @@index([entityType, entityId, at])
+  @@index([action, at])
 }

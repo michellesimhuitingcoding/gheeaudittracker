@@ -17,8 +17,8 @@ function details(formData: FormData) {
 }
 
 export async function createStaffAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireStaff(MANAGE_STAFF);
-  const result = await createStaff({ ...details(formData), password: formData.get("password") });
+  const actor = await requireStaff(MANAGE_STAFF);
+  const result = await createStaff(actor.id, { ...details(formData), password: formData.get("password") });
   if (result?.ok) revalidatePath("/staff", "layout");
   return result;
 }
@@ -50,6 +50,8 @@ export async function resetPasswordAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireStaff(MANAGE_STAFF);
-  return resetStaffPassword(id, formData.get("password"));
+  const actor = await requireStaff(MANAGE_STAFF);
+  const result = await resetStaffPassword(actor.id, id, formData.get("password"));
+  if (result?.ok) revalidatePath("/staff", "layout");
+  return result;
 }

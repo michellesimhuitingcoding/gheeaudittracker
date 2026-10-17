@@ -42,11 +42,19 @@ try {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
+  const id = randomUUID();
+  await client.query("BEGIN");
   await client.query(
     `INSERT INTO "Staff" ("id", "staffId", "name", "email", "role", "passwordHash", "updatedAt")
      VALUES ($1, $2, $3, $4, 'MASTER_ADMIN', $5, NOW())`,
-    [randomUUID(), staffId, name, email, passwordHash],
+    [id, staffId, name, email, passwordHash],
   );
+  await client.query(
+    `INSERT INTO "AuditLog" ("id", "action", "entityType", "entityId", "changes", "detail")
+     VALUES ($1, 'STAFF_CREATED', 'Staff', $2, $3, 'Created by the setup command')`,
+    [randomUUID(), id, JSON.stringify({ staffId, name, email, role: "MASTER_ADMIN" })],
+  );
+  await client.query("COMMIT");
   process.stdout.write(`Master Admin created for ${email}.\n`);
 } finally {
   await client.end();
