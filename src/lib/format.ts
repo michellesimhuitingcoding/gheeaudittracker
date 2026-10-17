@@ -10,6 +10,13 @@ export function formatDateTime(date: Date): string {
   return dateTime.format(date);
 }
 
+const isoDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+
+// Today's date in Malaysia as YYYY-MM-DD.
+export function todayInMyt(now = new Date()): string {
+  return isoDate.format(now);
+}
+
 const FIELD_LABELS: Record<string, string> = {
   staffId: "Staff ID",
   name: "Name",
@@ -46,6 +53,10 @@ const FIELD_LABELS: Record<string, string> = {
   progressNote: "Progress note",
   nextAction: "Next action",
   reviewNote: "Review note",
+  date: "Date",
+  job: "Job",
+  category: "Category",
+  note: "Note",
 };
 
 function formatValue(field: string, value: unknown): string {

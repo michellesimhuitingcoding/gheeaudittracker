@@ -5,6 +5,7 @@ import { clientListFilter } from "@/lib/clients/permissions";
 import { requireStaff } from "@/lib/current-staff";
 import { hasRole } from "@/lib/permissions";
 import { ROLE_LABELS, VIEW_AUDIT_LOG } from "@/lib/roles";
+import { canUseTimesheet } from "@/lib/timesheet/permissions";
 
 async function CurrentStaff() {
   const staff = await requireStaff();
@@ -14,6 +15,11 @@ async function CurrentStaff() {
       {clientListFilter(staff) && (
         <Link href="/clients" className="underline">
           Clients
+        </Link>
+      )}
+      {canUseTimesheet(staff.role) && (
+        <Link href="/timesheet" className="underline">
+          Timesheet
         </Link>
       )}
       {staff.role === "MASTER_ADMIN" && (
