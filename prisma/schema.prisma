@@ -55,6 +55,21 @@ model Staff {
   internalNotes         InternalNote[]
   leaveEntries          LeaveEntry[]
   createdLeaveEntries   LeaveEntry[]           @relation("LeaveCreatedBy")
+  passwordResetTokens   PasswordResetToken[]
+}
+
+// Forgot-password links. Only a SHA-256 hash of the token is stored; each
+// token works once and expires (see src/lib/password-reset).
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  staffId   String
+  staff     Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([staffId, createdAt])
 }
 
 // WORKFLOW.md §9: who, when, what, from, to. Append-only — the database

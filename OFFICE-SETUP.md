@@ -16,6 +16,16 @@ Log in with the master admin email and the password you set (12 or more characte
 If it says the email or password is wrong, run the `create-master-admin` account script.
 If that says the account "already exists", run the reset script instead.
 
+## Forgot password
+
+Staff click **Forgot password?** on the login page and enter their email.
+Email isn't set up yet, so the reset link appears in the PowerShell window running
+the app, on a line starting `[password reset]`. Copy that link and send it to the
+staff member. It works once, for one hour.
+
+The link uses the `NEXTAUTH_URL` address in `.env`, so set that to the staff address
+(`http://192.168.0.135:3000`) or links won't open on staff computers.
+
 ## If staff see "refused to connect"
 
 Windows Firewall is blocking them. While you're on the office Wi-Fi, open PowerShell

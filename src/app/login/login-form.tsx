@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -62,6 +63,9 @@ export function LoginForm() {
       >
         {pending ? "Logging in…" : "Log in"}
       </button>
+      <Link href="/login/forgot-password" className="text-sm text-zinc-600 underline">
+        Forgot password?
+      </Link>
     </form>
   );
 }
