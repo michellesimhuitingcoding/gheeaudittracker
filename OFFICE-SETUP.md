@@ -28,6 +28,19 @@ log in with it, they must choose their own password before they can use the app.
 
 Anyone can change their own password any time with **Change password** on the home page.
 
+## If a Master Admin is locked out
+
+Any Master Admin can reset another Master Admin's password on the Staff page. If no
+Master Admin can log in, run this on the office computer (with your Master Admin email):
+
+```
+cd $HOME\gheeaudittracker
+npm run reset-master-admin-password -- your-email@example.com
+```
+
+It prints a temporary password **once**. Log in with it and you'll be asked to choose
+your own password straight away. It only works for active Master Admins.
+
 ## If staff see "refused to connect"
 
 Windows Firewall is blocking them. While you're on the office Wi-Fi, open PowerShell
