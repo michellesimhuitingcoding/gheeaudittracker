@@ -42,7 +42,7 @@ function clientInput(overrides: Record<string, unknown> = {}) {
     dormant: false,
     status: "ACTIVE",
     prepareFormEA: false,
-    auditBy: "INTERNAL",
+    auditFirmId: "audit_firm_internal",
     signingPartnerIds: [partner.id],
     ...overrides,
   };
@@ -79,7 +79,7 @@ describe("clients (database)", () => {
       signingPartners: "Peter Partner",
       fye: "31 Dec",
       paymentStatus: "Not invoiced",
-      auditBy: "Internal",
+      auditBy: "G.H. Ee & Rakan-Rakan",
     });
   });
 
@@ -156,7 +156,7 @@ describe("clients (database)", () => {
   });
 
   it("adds, changes and removes external auditors with audit entries", async () => {
-    const { id } = await newClient({ auditBy: "EXTERNAL" });
+    const { id } = await newClient({ auditFirmId: "audit_firm_wong_joo_hua" });
     expect(await addExternalAuditor(intake, id, { firmName: "ABC & Co", auditDeadline: "2026-12-31" })).toMatchObject({
       ok: true,
     });

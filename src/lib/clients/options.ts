@@ -1,4 +1,4 @@
-import { AuditBy, ClientStatus, EntityType, PaymentStatus, Service } from "@/generated/prisma/enums";
+import { ClientStatus, EntityType, PaymentStatus, Service } from "@/generated/prisma/enums";
 
 export const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
   SDN_BHD: "Sdn Bhd",
@@ -27,16 +27,10 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   NOT_INVOICED: "Not invoiced",
 };
 
-export const AUDIT_BY_LABELS: Record<AuditBy, string> = {
-  INTERNAL: "Internal",
-  EXTERNAL: "External",
-};
-
 export const ENTITY_TYPES = Object.values(EntityType);
 export const SERVICES = Object.values(Service);
 export const CLIENT_STATUSES = Object.values(ClientStatus);
 export const PAYMENT_STATUSES = Object.values(PaymentStatus);
-export const AUDIT_BY_OPTIONS = Object.values(AuditBy);
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 

@@ -93,7 +93,7 @@ Form E job (employer return): Receive payroll → Prepare Form E → Manager rev
 - contactName/Phone/Email, address
 - prepareFormEA: true/false
 - paymentStatus (paid/partial/unpaid/not invoiced) — Phase 1; set by Admin/Master Admin
-- auditBy: "internal" | "external" — Phase 1
+- auditBy: an audit firm from the Auditors list — "G.H. Ee & Rakan-Rakan" (internal) or an external firm such as "Wong Joo Hua"; Master Admin adds, renames and hides firms (never deletes) — Phase 1
 - signingPartners[]: one or more Partners (staff with login) who sign the audit report — Phase 1
 - externalAuditors[]: zero or more outside audit firms {firmName, contact, auditDeadline, status} — recorded only, no login — Phase 1
 
