@@ -34,6 +34,9 @@ model Staff {
   active       Boolean   @default(true)
   // Resignation: deactivated by the daily cron once this date has passed.
   lastDay      DateTime? @db.Date
+  // Set when the Master Admin gives a temporary password; the staff member
+  // must choose their own before using the app.
+  mustChangePassword Boolean @default(false)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -56,10 +59,27 @@ model Staff {
   leaveEntries          LeaveEntry[]
   createdLeaveEntries   LeaveEntry[]           @relation("LeaveCreatedBy")
   passwordResetTokens   PasswordResetToken[]
+  passwordResetRequests PasswordResetRequest[] @relation("PasswordResetRequester")
+  resolvedResetRequests PasswordResetRequest[] @relation("PasswordResetResolver")
 }
 
-// Forgot-password links. Only a SHA-256 hash of the token is stored; each
-// token works once and expires (see src/lib/password-reset).
+// "Forgot password?" asks the Master Admin for a reset. Closed when the
+// Master Admin resets that person's password.
+model PasswordResetRequest {
+  id           String    @id @default(cuid())
+  staffId      String
+  staff        Staff     @relation("PasswordResetRequester", fields: [staffId], references: [id], onDelete: Restrict)
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   Staff?    @relation("PasswordResetResolver", fields: [resolvedById], references: [id], onDelete: Restrict)
+
+  @@index([resolvedAt])
+  @@index([staffId, resolvedAt])
+}
+
+// Email reset links, no longer used (resets go through the Master Admin).
+// Kept until removal of the table is approved (RULES.md 5).
 model PasswordResetToken {
   id        String    @id @default(cuid())
   staffId   String

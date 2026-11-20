@@ -10,7 +10,7 @@ export function ForgotPasswordForm() {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <p className="text-sm text-zinc-600">Enter your work email and we&apos;ll send you a link to set a new password.</p>
+      <p className="text-sm text-zinc-600">Enter your work email and we&apos;ll ask the Master Admin to reset your password.</p>
       <label className="flex flex-col gap-1 text-sm text-zinc-700">
         Email
         <input
@@ -28,7 +28,7 @@ export function ForgotPasswordForm() {
         disabled={pending}
         className="rounded bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
       >
-        {pending ? "Sending…" : "Send reset link"}
+        {pending ? "Sending…" : "Ask Master Admin"}
       </button>
       <Link href="/login" className="text-sm text-zinc-600 underline">
         Back to log in

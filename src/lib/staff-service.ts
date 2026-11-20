@@ -130,9 +130,17 @@ export async function resetStaffPassword(actorId: string, id: string, password: 
   const passwordHash = await hashPassword(parsed.data);
 
   return db.$transaction(async (tx) => {
-    const result = await tx.staff.updateMany({ where: { id }, data: { passwordHash } });
+    // A temporary password: the staff member must choose their own at next login.
+    const result = await tx.staff.updateMany({ where: { id }, data: { passwordHash, mustChangePassword: true } });
     if (result.count === 0) return { ok: false, error: "Staff member not found." };
+    await tx.passwordResetRequest.updateMany({
+      where: { staffId: id, resolvedAt: null },
+      data: { resolvedAt: new Date(), resolvedById: actorId },
+    });
     await recordAudit(tx, { action: "STAFF_PASSWORD_RESET", actorId, entityType: "Staff", entityId: id });
-    return { ok: true, message: "Password reset. Give the new password to the staff member." };
+    return {
+      ok: true,
+      message: "Password reset. Give the temporary password to the staff member — they will choose their own when they log in.",
+    };
   });
 }

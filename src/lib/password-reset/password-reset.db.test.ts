@@ -1,144 +1,105 @@
 import { randomUUID } from "node:crypto";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import type { Role } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
-import type { PasswordResetEmail } from "./email";
-import { RESET_DONE_MESSAGE, RESET_LINK_INVALID, RESET_REQUESTED_MESSAGE } from "./schema";
-import { isResetLinkValid, requestPasswordReset, resetPasswordWithToken } from "./service";
-import { RESET_REQUEST_COOLDOWN_MS, RESET_TOKEN_TTL_MS } from "./token";
+import { resetStaffPassword } from "@/lib/staff-service";
+import { RESET_REQUESTED_MESSAGE } from "./schema";
+import { changeOwnPassword, openResetRequestCount, openResetRequests, requestPasswordReset } from "./service";
 
 const OLD_PASSWORD = "old password 123";
+const TEMP_PASSWORD = "temporary pass 1";
 const NEW_PASSWORD = "new password 456";
-const baseUrl = "http://localhost:3000";
-const now = new Date("2032-05-01T02:00:00Z");
 const generic = { ok: true, message: RESET_REQUESTED_MESSAGE };
+let masterAdminId: string;
 
-async function staff(active = true) {
+async function staff(role: Role = "JUNIOR", active = true) {
   const id = randomUUID().slice(0, 8);
   return db.staff.create({
     data: {
       staffId: `PR-${id}`,
-      name: "Reset Test",
+      name: `Reset ${id}`,
       email: `pr-${id}@example.com`,
-      role: "JUNIOR",
+      role,
       active,
       passwordHash: await hashPassword(OLD_PASSWORD),
     },
   });
 }
 
-// Requests a link and returns the token from the "sent" email.
-async function requestToken(email: string, at = now) {
-  const sent: PasswordResetEmail[] = [];
-  const result = await requestPasswordReset(email, { baseUrl, now: at, send: async (mail) => void sent.push(mail) });
-  const token = sent[0] ? new URL(sent[0].link).searchParams.get("token") : null;
-  return { result, sent, token };
-}
+const openFor = (staffId: string) => db.passwordResetRequest.count({ where: { staffId, resolvedAt: null } });
 
-const passwords = { password: NEW_PASSWORD, confirm: NEW_PASSWORD };
+beforeAll(async () => {
+  masterAdminId = (await staff("MASTER_ADMIN")).id;
+});
 
-describe("password reset (database)", () => {
-  it("sends a one-hour link to an active account", async () => {
+describe("password reset requests (database)", () => {
+  it("records one open request per person and logs it", async () => {
     const member = await staff();
-    const { result, sent, token } = await requestToken(member.email.toUpperCase());
-    expect(result).toEqual(generic);
-    expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ to: member.email, expiresAt: new Date(now.getTime() + RESET_TOKEN_TTL_MS) });
-    expect(sent[0].link.startsWith(`${baseUrl}/login/reset-password?token=`)).toBe(true);
-
-    const stored = await db.passwordResetToken.findFirstOrThrow({ where: { staffId: member.id } });
-    expect(stored.tokenHash).not.toBe(token);
+    expect(await requestPasswordReset(member.email.toUpperCase())).toEqual(generic);
+    expect(await requestPasswordReset(member.email)).toEqual(generic);
+    expect(await openFor(member.id)).toBe(1);
     expect(await db.auditLog.count({ where: { action: "PASSWORD_RESET_REQUESTED", entityId: member.id } })).toBe(1);
   });
 
-  it("gives the same message and sends nothing for unknown or inactive accounts", async () => {
-    const inactive = await staff(false);
-    expect(await requestToken("nobody-here@example.com")).toMatchObject({ result: generic, sent: [] });
-    expect(await requestToken(inactive.email)).toMatchObject({ result: generic, sent: [] });
-    expect(await db.passwordResetToken.count({ where: { staffId: inactive.id } })).toBe(0);
+  it("gives the same message and records nothing for unknown or inactive accounts", async () => {
+    const inactive = await staff("JUNIOR", false);
+    expect(await requestPasswordReset("nobody-here@example.com")).toEqual(generic);
+    expect(await requestPasswordReset(inactive.email)).toEqual(generic);
+    expect(await openFor(inactive.id)).toBe(0);
   });
 
   it("asks for a valid email", async () => {
-    expect(await requestPasswordReset("not-an-email", { baseUrl, now })).toEqual({
+    expect(await requestPasswordReset("not-an-email")).toEqual({
       ok: false,
       fieldErrors: { email: ["Enter a valid email address."] },
     });
   });
 
-  it("still shows the generic message when the email fails to send", async () => {
+  it("shows open requests to the Master Admin only", async () => {
     const member = await staff();
-    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
-    const result = await requestPasswordReset(member.email, {
-      baseUrl,
-      now,
-      send: async () => {
-        throw new Error("provider down");
-      },
-    });
-    expect(result).toEqual(generic);
-    expect(quiet).toHaveBeenCalled();
-    quiet.mockRestore();
+    await requestPasswordReset(member.email);
+    expect(await openResetRequestCount("MASTER_ADMIN")).toBeGreaterThan(0);
+    expect((await openResetRequests("MASTER_ADMIN")).map((request) => request.staff.id)).toContain(member.id);
+    expect(await openResetRequestCount("ADMIN")).toBe(0);
+    expect(await openResetRequests("MANAGER")).toEqual([]);
   });
 
-  it("sends at most one link per cooldown, and only the newest link works", async () => {
+  it("closes the request when the Master Admin sets a temporary password", async () => {
     const member = await staff();
-    const first = await requestToken(member.email);
-    expect((await requestToken(member.email, new Date(now.getTime() + 1000))).sent).toEqual([]);
+    await requestPasswordReset(member.email);
+    expect(await resetStaffPassword(masterAdminId, member.id, TEMP_PASSWORD)).toMatchObject({ ok: true });
 
-    const later = new Date(now.getTime() + RESET_REQUEST_COOLDOWN_MS + 1000);
-    const second = await requestToken(member.email, later);
-    expect(second.sent).toHaveLength(1);
-    expect(await isResetLinkValid(first.token, later)).toBe(false);
-    expect(await isResetLinkValid(second.token, later)).toBe(true);
+    const request = await db.passwordResetRequest.findFirstOrThrow({ where: { staffId: member.id } });
+    expect(request).toMatchObject({ resolvedById: masterAdminId });
+    expect(request.resolvedAt).not.toBeNull();
+    const updated = await db.staff.findUniqueOrThrow({ where: { id: member.id } });
+    expect(updated.mustChangePassword).toBe(true);
+    expect(await verifyPassword(TEMP_PASSWORD, updated.passwordHash)).toBe(true);
   });
 
-  it("resets the password once and logs it without the password", async () => {
+  it("lets staff replace a temporary password with their own and logs it", async () => {
     const member = await staff();
-    const { token } = await requestToken(member.email);
-    expect(await resetPasswordWithToken(token, passwords, now)).toEqual({ ok: true, message: RESET_DONE_MESSAGE });
+    await resetStaffPassword(masterAdminId, member.id, TEMP_PASSWORD);
+    const input = { currentPassword: TEMP_PASSWORD, password: NEW_PASSWORD, confirm: NEW_PASSWORD };
+    expect(await changeOwnPassword(member.id, input)).toEqual({ ok: true, message: "Password changed." });
 
     const updated = await db.staff.findUniqueOrThrow({ where: { id: member.id } });
+    expect(updated.mustChangePassword).toBe(false);
     expect(await verifyPassword(NEW_PASSWORD, updated.passwordHash)).toBe(true);
-    const logged = await db.auditLog.findFirstOrThrow({ where: { action: "STAFF_PASSWORD_RESET_BY_LINK", entityId: member.id } });
-    expect(logged).toMatchObject({ actorId: member.id, changes: null, detail: null });
-
-    expect(await resetPasswordWithToken(token, { password: "another pass 789", confirm: "another pass 789" }, now)).toEqual({
-      ok: false,
-      error: RESET_LINK_INVALID,
-    });
+    const logged = await db.auditLog.findFirstOrThrow({ where: { action: "STAFF_PASSWORD_CHANGED", entityId: member.id } });
+    expect(logged).toMatchObject({ actorId: member.id, changes: null });
   });
 
-  it("refuses an expired link", async () => {
+  it("refuses a wrong current password or the same password", async () => {
     const member = await staff();
-    const { token } = await requestToken(member.email);
-    const expired = new Date(now.getTime() + RESET_TOKEN_TTL_MS);
-    expect(await isResetLinkValid(token, expired)).toBe(false);
-    expect(await resetPasswordWithToken(token, passwords, expired)).toEqual({ ok: false, error: RESET_LINK_INVALID });
-  });
-
-  it("refuses a made-up or missing token", async () => {
-    expect(await resetPasswordWithToken("made-up", passwords, now)).toEqual({ ok: false, error: RESET_LINK_INVALID });
-    expect(await resetPasswordWithToken(undefined, passwords, now)).toEqual({ ok: false, error: RESET_LINK_INVALID });
-  });
-
-  it("refuses a link once the account is deactivated", async () => {
-    const member = await staff();
-    const { token } = await requestToken(member.email);
-    await db.staff.update({ where: { id: member.id }, data: { active: false } });
-    expect(await resetPasswordWithToken(token, passwords, now)).toEqual({ ok: false, error: RESET_LINK_INVALID });
-  });
-
-  it("keeps the link usable after a validation error", async () => {
-    const member = await staff();
-    const { token } = await requestToken(member.email);
-    expect(await resetPasswordWithToken(token, { password: NEW_PASSWORD, confirm: "different one!" }, now)).toEqual({
-      ok: false,
-      fieldErrors: { confirm: ["The passwords do not match."] },
-    });
-    expect(await resetPasswordWithToken(token, { password: OLD_PASSWORD, confirm: OLD_PASSWORD }, now)).toEqual({
-      ok: false,
-      fieldErrors: { password: ["Choose a password different from your current one."] },
-    });
-    expect(await isResetLinkValid(token, now)).toBe(true);
+    expect(
+      await changeOwnPassword(member.id, { currentPassword: "wrong password", password: NEW_PASSWORD, confirm: NEW_PASSWORD }),
+    ).toEqual({ ok: false, fieldErrors: { currentPassword: ["Current password is incorrect."] } });
+    expect(
+      await changeOwnPassword(member.id, { currentPassword: OLD_PASSWORD, password: OLD_PASSWORD, confirm: OLD_PASSWORD }),
+    ).toEqual({ ok: false, fieldErrors: { password: ["Choose a password different from your current one."] } });
+    const unchanged = await db.staff.findUniqueOrThrow({ where: { id: member.id } });
+    expect(await verifyPassword(OLD_PASSWORD, unchanged.passwordHash)).toBe(true);
   });
 });

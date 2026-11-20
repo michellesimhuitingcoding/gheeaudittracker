@@ -33,7 +33,7 @@ export function ResetPasswordForm({ action }: { action: Action }) {
   return (
     <form action={formAction} className="flex max-w-md flex-col gap-2">
       <label className="flex flex-col gap-1 text-sm text-zinc-700">
-        New password
+        Temporary password
         <input
           name="password"
           type="password"

@@ -23,7 +23,17 @@ async function EditStaff({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const staff = await db.staff.findUnique({
     where: { id },
-    select: { id: true, staffId: true, name: true, email: true, role: true, active: true, lastDay: true },
+    select: {
+      id: true,
+      staffId: true,
+      name: true,
+      email: true,
+      role: true,
+      active: true,
+      lastDay: true,
+      mustChangePassword: true,
+      passwordResetRequests: { where: { resolvedAt: null }, take: 1, select: { createdAt: true } },
+    },
   });
   if (!staff) notFound();
 
@@ -67,6 +77,15 @@ async function EditStaff({ params }: { params: Promise<{ id: string }> }) {
           </section>
           <section className="flex flex-col gap-3">
             <h2 className="font-medium text-zinc-900">Password</h2>
+            {staff.passwordResetRequests[0] && (
+              <p role="status" className="text-sm text-red-700">
+                Asked for a password reset at {formatDateTime(staff.passwordResetRequests[0].createdAt)}.
+              </p>
+            )}
+            <p className="text-sm text-zinc-600">
+              Set a temporary password and give it to the staff member. They must choose their own when they log in.
+              {staff.mustChangePassword && " They have not chosen their own password yet."}
+            </p>
             <ResetPasswordForm action={resetPasswordAction.bind(null, staff.id)} />
           </section>
         </>

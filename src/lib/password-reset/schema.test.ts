@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { forgotPasswordSchema, newPasswordSchema } from "./schema";
+import { changePasswordSchema, forgotPasswordSchema } from "./schema";
 
 describe("forgotPasswordSchema", () => {
   it("normalises the email", () => {
@@ -11,18 +11,25 @@ describe("forgotPasswordSchema", () => {
   });
 });
 
-describe("newPasswordSchema", () => {
+describe("changePasswordSchema", () => {
+  const valid = { currentPassword: "temporary pass 1", password: "correct horse", confirm: "correct horse" };
+
   it("accepts a matching password of 12+ characters", () => {
-    expect(newPasswordSchema.safeParse({ password: "correct horse", confirm: "correct horse" }).success).toBe(true);
+    expect(changePasswordSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("requires the current password", () => {
+    const result = changePasswordSchema.safeParse({ ...valid, currentPassword: "" });
+    expect(result.error?.issues[0]).toMatchObject({ path: ["currentPassword"], message: "Enter your current password." });
   });
 
   it("rejects a short password", () => {
-    const result = newPasswordSchema.safeParse({ password: "short", confirm: "short" });
+    const result = changePasswordSchema.safeParse({ ...valid, password: "short", confirm: "short" });
     expect(result.error?.issues[0]).toMatchObject({ path: ["password"], message: "Password must be at least 12 characters." });
   });
 
   it("rejects passwords that do not match", () => {
-    const result = newPasswordSchema.safeParse({ password: "correct horse", confirm: "correct horsf" });
+    const result = changePasswordSchema.safeParse({ ...valid, confirm: "correct horsf" });
     expect(result.error?.issues[0]).toMatchObject({ path: ["confirm"], message: "The passwords do not match." });
   });
 });

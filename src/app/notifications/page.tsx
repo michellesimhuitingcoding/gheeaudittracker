@@ -6,6 +6,7 @@ import { requireStaff } from "@/lib/current-staff";
 import { formatDateTime } from "@/lib/format";
 import { type NotificationTab, TAB_LABELS } from "@/lib/notifications/rules";
 import { openCounts, openNotifications } from "@/lib/notifications/service";
+import { openResetRequests } from "@/lib/password-reset/service";
 import { markAllReadAction, markClientReadAction } from "./actions";
 
 export const metadata: Metadata = { title: "Notifications" };
@@ -18,7 +19,13 @@ const TABS: { tab: NotificationTab; param: string }[] = [
 async function Notifications({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
   const viewer = await requireStaff();
   const tab: NotificationTab = (await searchParams).tab === "fyi" ? "FYI" : "ACTION_REQUIRED";
-  const [counts, groups] = await Promise.all([openCounts(viewer.id), openNotifications(viewer.id, tab)]);
+  const [counts, groups, resetRequests] = await Promise.all([
+    openCounts(viewer.id),
+    openNotifications(viewer.id, tab),
+    openResetRequests(viewer.role),
+  ]);
+  counts.ACTION_REQUIRED += resetRequests.length;
+  const showResetRequests = tab === "ACTION_REQUIRED" && resetRequests.length > 0;
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -40,7 +47,25 @@ async function Notifications({ searchParams }: { searchParams: Promise<{ tab?: s
         ))}
       </nav>
 
-      {groups.length === 0 && (
+      {showResetRequests && (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-medium text-zinc-900">Password reset requests · {resetRequests.length}</h2>
+          <ul className="flex flex-col divide-y divide-zinc-100 rounded border border-zinc-200 bg-white text-sm">
+            {resetRequests.map((request) => (
+              <li key={request.id} className="flex items-baseline justify-between gap-4 p-3">
+                <span className="text-zinc-900">
+                  <Link href={`/staff/${request.staff.id}`} className="underline">
+                    {request.staff.name} ({request.staff.email}) forgot their password — reset it
+                  </Link>
+                </span>
+                <span className="whitespace-nowrap text-xs text-zinc-500">{formatDateTime(request.createdAt)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {groups.length === 0 && !showResetRequests && (
         <p className="text-sm text-zinc-600">
           {tab === "ACTION_REQUIRED" ? "Nothing needs your attention." : "You're all caught up."}
         </p>
