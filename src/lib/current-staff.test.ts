@@ -22,6 +22,7 @@ const manager = {
   email: "aisyah@example.com",
   role: "MANAGER",
   active: true,
+  mustChangePassword: false,
 };
 
 beforeEach(() => {
@@ -63,5 +64,17 @@ describe("requireStaff", () => {
     getServerSession.mockResolvedValue({ staffId: "s1" });
     findUnique.mockResolvedValue(manager);
     await expect(requireStaff(["MANAGER", "PARTNER"])).resolves.toEqual(manager);
+  });
+
+  it("sends staff on a temporary password to choose their own", async () => {
+    getServerSession.mockResolvedValue({ staffId: "s1" });
+    findUnique.mockResolvedValue({ ...manager, mustChangePassword: true });
+    await expect(requireStaff()).rejects.toThrow("REDIRECT /account/password");
+  });
+
+  it("lets staff on a temporary password open the change-password page", async () => {
+    getServerSession.mockResolvedValue({ staffId: "s1" });
+    findUnique.mockResolvedValue({ ...manager, mustChangePassword: true });
+    await expect(requireStaff(undefined, { passwordChange: true })).resolves.toMatchObject({ id: "s1" });
   });
 });

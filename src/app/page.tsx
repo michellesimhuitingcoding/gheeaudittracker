@@ -76,6 +76,9 @@ async function CurrentStaff() {
         {staff.name} · {ROLE_LABELS[staff.role]}
       </span>
       <NotificationBell />
+      <Link href="/account/password" className="underline">
+        Change password
+      </Link>
       <LogoutButton />
     </div>
   );

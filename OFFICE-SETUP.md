@@ -18,13 +18,28 @@ If that says the account "already exists", run the reset script instead.
 
 ## Forgot password
 
-Staff click **Forgot password?** on the login page and enter their email.
-Email isn't set up yet, so the reset link appears in the PowerShell window running
-the app, on a line starting `[password reset]`. Copy that link and send it to the
-staff member. It works once, for one hour.
+Staff click **Forgot password?** on the login page and enter their email. This asks
+the Master Admin for help: a red number appears on the Master Admin's bell, and the
+request is listed under **Notifications → Action Required**.
 
-The link uses the `NEXTAUTH_URL` address in `.env`, so set that to the staff address
-(`http://192.168.0.135:3000`) or links won't open on staff computers.
+To help them, the Master Admin clicks the request (it opens that person's staff page),
+sets a **temporary password** under "Password", and tells the staff member. When they
+log in with it, they must choose their own password before they can use the app.
+
+Anyone can change their own password any time with **Change password** on the home page.
+
+## If a Master Admin is locked out
+
+Any Master Admin can reset another Master Admin's password on the Staff page. If no
+Master Admin can log in, run this on the office computer (with your Master Admin email):
+
+```
+cd $HOME\gheeaudittracker
+npm run reset-master-admin-password -- your-email@example.com
+```
+
+It prints a temporary password **once**. Log in with it and you'll be asked to choose
+your own password straight away. It only works for active Master Admins.
 
 ## If staff see "refused to connect"
 

@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { requireStaff } from "@/lib/current-staff";
 import { openCounts } from "@/lib/notifications/service";
+import { openResetRequestCount } from "@/lib/password-reset/service";
 
 // Empty bell when nothing needs attention; otherwise the open count.
 export async function NotificationBell() {
   const viewer = await requireStaff();
-  const counts = await openCounts(viewer.id);
-  const total = counts.ACTION_REQUIRED + counts.FYI;
-  const tab = counts.ACTION_REQUIRED === 0 && counts.FYI > 0 ? "?tab=fyi" : "";
+  const [counts, resetRequests] = await Promise.all([openCounts(viewer.id), openResetRequestCount(viewer.role)]);
+  const actionRequired = counts.ACTION_REQUIRED + resetRequests;
+  const total = actionRequired + counts.FYI;
+  const tab = actionRequired === 0 && counts.FYI > 0 ? "?tab=fyi" : "";
 
   return (
     <Link
@@ -22,7 +24,7 @@ export async function NotificationBell() {
       {total > 0 && (
         <span
           className={`absolute -right-2 -top-1 rounded-full px-1.5 text-xs font-medium text-white ${
-            counts.ACTION_REQUIRED > 0 ? "bg-red-600" : "bg-zinc-500"
+            actionRequired > 0 ? "bg-red-600" : "bg-zinc-500"
           }`}
         >
           {total}

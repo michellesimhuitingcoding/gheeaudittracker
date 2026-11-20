@@ -54,7 +54,8 @@ export async function resetPasswordAction(
 ): Promise<FormState> {
   const actor = await requireStaff(MANAGE_STAFF);
   const result = await resetStaffPassword(actor.id, id, formData.get("password"));
-  if (result?.ok) revalidatePath("/staff", "layout");
+  // Clears the request from everyone's notification bell too.
+  if (result?.ok) revalidatePath("/", "layout");
   return result;
 }
 
