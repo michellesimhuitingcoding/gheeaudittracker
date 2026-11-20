@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { LogoutButton } from "@/components/logout-button";
 import { NotificationBell } from "@/components/notification-bell";
+import { MANAGE_AUDIT_FIRMS } from "@/lib/audit-firms/schema";
 import { clientListFilter } from "@/lib/clients/permissions";
 import { requireStaff } from "@/lib/current-staff";
 import { hasRole } from "@/lib/permissions";
@@ -59,6 +60,11 @@ async function CurrentStaff() {
       {hasRole(staff.role, VIEW_HOURLY_RATES) && (
         <Link href="/rates" className="underline">
           Rates &amp; holidays
+        </Link>
+      )}
+      {hasRole(staff.role, MANAGE_AUDIT_FIRMS) && (
+        <Link href="/auditors" className="underline">
+          Auditors
         </Link>
       )}
       {hasRole(staff.role, VIEW_AUDIT_LOG) && (

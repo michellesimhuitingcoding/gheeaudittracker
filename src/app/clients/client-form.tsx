@@ -3,15 +3,12 @@
 import { FieldError, FormMessage } from "@/components/form-message";
 import { useFormAction } from "@/components/use-form-action";
 import type {
-  AuditBy,
   ClientStatus,
   EntityType,
   PaymentStatus,
   Service,
 } from "@/generated/prisma/enums";
 import {
-  AUDIT_BY_LABELS,
-  AUDIT_BY_OPTIONS,
   CLIENT_STATUSES,
   CLIENT_STATUS_LABELS,
   ENTITY_TYPES,
@@ -22,6 +19,7 @@ import {
   SERVICES,
   SERVICE_LABELS,
 } from "@/lib/clients/options";
+import type { AuditFirmOption } from "@/lib/audit-firms/service";
 import type { ClientPeopleOptions } from "@/lib/clients/queries";
 import type { FormState } from "@/lib/form-state";
 
@@ -43,7 +41,7 @@ export type ClientFormValues = {
   status: ClientStatus;
   prepareFormEA: boolean;
   paymentStatus: PaymentStatus;
-  auditBy: AuditBy | null;
+  auditFirmId: string | null;
   signingPartnerIds: string[];
   contactName: string | null;
   contactPhone: string | null;
@@ -68,6 +66,7 @@ export function ClientForm({
   action,
   values,
   people,
+  auditFirms,
   ownerLocked,
   canEditPayment,
   submitLabel,
@@ -75,6 +74,7 @@ export function ClientForm({
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   values?: ClientFormValues;
   people: ClientPeopleOptions;
+  auditFirms: AuditFirmOption[];
   ownerLocked: boolean;
   canEditPayment: boolean;
   submitLabel: string;
@@ -301,15 +301,15 @@ export function ClientForm({
       <Section title="Audit">
         <label className={labelClass}>
           Audit by
-          <select name="auditBy" defaultValue={values?.auditBy ?? ""} className={inputClass}>
+          <select name="auditFirmId" defaultValue={values?.auditFirmId ?? ""} className={inputClass}>
             <option value="">Not applicable</option>
-            {AUDIT_BY_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {AUDIT_BY_LABELS[option]}
+            {auditFirms.map((firm) => (
+              <option key={firm.id} value={firm.id}>
+                {firm.name}
               </option>
             ))}
           </select>
-          <FieldError state={state} name="auditBy" />
+          <FieldError state={state} name="auditFirmId" />
         </label>
         <div className="flex flex-col gap-1 text-sm text-zinc-700">
           Signing partners

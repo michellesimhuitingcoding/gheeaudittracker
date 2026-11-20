@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AuditBy, ClientStatus, EntityType, PaymentStatus, Service } from "@/generated/prisma/enums";
+import { ClientStatus, EntityType, PaymentStatus, Service } from "@/generated/prisma/enums";
 import { normaliseEmail } from "@/lib/authenticate";
 import { daysInMonth } from "@/lib/clients/options";
 
@@ -59,11 +59,7 @@ export const clientSchema = z
     status: z.enum(ClientStatus),
     prepareFormEA: z.boolean(),
     paymentStatus: z.enum(PaymentStatus).optional(),
-    auditBy: z
-      .enum(AuditBy)
-      .or(z.literal(""))
-      .optional()
-      .transform((value) => (value ? value : null)),
+    auditFirmId: optionalId,
     signingPartnerIds: z.array(z.string().min(1)).transform((ids) => [...new Set(ids)]),
     contactName: optionalText(200, "Contact name"),
     contactPhone: optionalText(50, "Contact phone"),
@@ -119,7 +115,7 @@ export function clientFormValues(formData: FormData) {
     status: text("status"),
     prepareFormEA: formData.get("prepareFormEA") === "on",
     paymentStatus: text("paymentStatus") || undefined,
-    auditBy: text("auditBy"),
+    auditFirmId: text("auditFirmId"),
     signingPartnerIds: formData.getAll("signingPartnerIds").filter((value) => typeof value === "string"),
     contactName: text("contactName"),
     contactPhone: text("contactPhone"),

@@ -55,6 +55,21 @@ model Staff {
   internalNotes         InternalNote[]
   leaveEntries          LeaveEntry[]
   createdLeaveEntries   LeaveEntry[]           @relation("LeaveCreatedBy")
+  passwordResetTokens   PasswordResetToken[]
+}
+
+// Forgot-password links. Only a SHA-256 hash of the token is stored; each
+// token works once and expires (see src/lib/password-reset).
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  staffId   String
+  staff     Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([staffId, createdAt])
 }
 
 // WORKFLOW.md §9: who, when, what, from, to. Append-only — the database
@@ -134,7 +149,10 @@ model Client {
   status            ClientStatus  @default(ACTIVE)
   prepareFormEA     Boolean       @default(false)
   paymentStatus     PaymentStatus @default(NOT_INVOICED)
+  // Replaced by auditFirm; kept (unused) until removal is approved (RULES.md 5).
   auditBy           AuditBy?
+  auditFirmId       String?
+  auditFirm         AuditFirm?    @relation(fields: [auditFirmId], references: [id], onDelete: Restrict)
   contactName       String?
   contactPhone      String?
   contactEmail      String?
@@ -154,6 +172,20 @@ model Client {
   @@index([partnerId])
   @@index([ownerId])
   @@index([seniorId])
+  @@index([auditFirmId])
+}
+
+// Firms that audit clients ("Audit by"). The firm's own practice is marked
+// internal; Master Admin adds outside firms. Firms are hidden, never deleted.
+model AuditFirm {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  internal  Boolean  @default(false)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clients Client[]
 }
 
 // Partners (staff with login) who sign the client's audit report.

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { NoPermission } from "@/components/no-permission";
 import { PageShell } from "@/components/page-shell";
+import { auditFirmOptions } from "@/lib/audit-firms/service";
 import { canChangePaymentStatus, canCreateClient } from "@/lib/clients/permissions";
 import { clientPeopleOptions } from "@/lib/clients/queries";
 import { requireStaff } from "@/lib/current-staff";
@@ -18,6 +19,7 @@ async function NewClient() {
     <ClientForm
       action={createClientAction}
       people={await clientPeopleOptions()}
+      auditFirms={await auditFirmOptions()}
       ownerLocked={false}
       canEditPayment={canChangePaymentStatus(viewer)}
       submitLabel="Add client"

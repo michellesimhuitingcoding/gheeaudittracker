@@ -7,7 +7,6 @@ import { NoPermission } from "@/components/no-permission";
 import { PageShell } from "@/components/page-shell";
 import { lastActivity } from "@/lib/checkin/activity";
 import {
-  AUDIT_BY_LABELS,
   CLIENT_STATUS_LABELS,
   ENTITY_TYPE_LABELS,
   PAYMENT_STATUS_LABELS,
@@ -15,6 +14,7 @@ import {
   formatFye,
 } from "@/lib/clients/options";
 import { canChangeOwner, canChangePaymentStatus, canEditClient, canViewClient } from "@/lib/clients/permissions";
+import { auditFirmOptions } from "@/lib/audit-firms/service";
 import { clientPeopleOptions } from "@/lib/clients/queries";
 import { requireStaff } from "@/lib/current-staff";
 import { db } from "@/lib/db";
@@ -56,6 +56,7 @@ async function ClientDetails({ params }: { params: Promise<{ id: string }> }) {
       manager: { select: { name: true } },
       partner: { select: { name: true } },
       senior: { select: { name: true } },
+      auditFirm: { select: { name: true } },
       signingPartners: { include: { partner: { select: { name: true } } } },
       assignedStaff: { include: { staff: { select: { name: true } } } },
       externalAuditors: { orderBy: { createdAt: "asc" } },
@@ -102,6 +103,7 @@ async function ClientDetails({ params }: { params: Promise<{ id: string }> }) {
             assignedStaffIds,
           }}
           people={await clientPeopleOptions({ ...client, signingPartnerIds, assignedStaffIds })}
+          auditFirms={await auditFirmOptions(client.auditFirmId)}
           ownerLocked={!canChangeOwner(viewer)}
           canEditPayment={canChangePaymentStatus(viewer)}
           submitLabel="Save changes"
@@ -123,7 +125,7 @@ async function ClientDetails({ params }: { params: Promise<{ id: string }> }) {
           <Detail label="Payment status" value={PAYMENT_STATUS_LABELS[client.paymentStatus]} />
           <Detail label="Dormant" value={client.dormant ? "Yes" : "No"} />
           <Detail label="Prepare Form EA" value={client.prepareFormEA ? "Yes" : "No"} />
-          <Detail label="Audit by" value={client.auditBy ? AUDIT_BY_LABELS[client.auditBy] : null} />
+          <Detail label="Audit by" value={client.auditFirm?.name} />
           <Detail
             label="Signing partners"
             value={client.signingPartners.map((row) => row.partner.name).join(", ")}

@@ -3,7 +3,6 @@ import { Prisma } from "@/generated/prisma/client";
 import type { Role } from "@/generated/prisma/enums";
 import { diffFields, recordAudit } from "@/lib/audit";
 import {
-  AUDIT_BY_LABELS,
   CLIENT_STATUS_LABELS,
   ENTITY_TYPE_LABELS,
   PAYMENT_STATUS_LABELS,
@@ -73,7 +72,7 @@ export function clientAuditView(client: ClientValues, names: Map<string, string>
     status: CLIENT_STATUS_LABELS[client.status],
     prepareFormEA: yesNo(client.prepareFormEA),
     paymentStatus: PAYMENT_STATUS_LABELS[client.paymentStatus],
-    auditBy: client.auditBy ? AUDIT_BY_LABELS[client.auditBy] : null,
+    auditBy: name(client.auditFirmId),
     signingPartners: client.signingPartnerIds
       .map((id) => name(id) ?? id)
       .sort()
@@ -120,6 +119,7 @@ async function checkPeople(
     managerId: string | null;
     partnerId: string | null;
     seniorId: string | null;
+    auditFirmId: string | null;
     signingPartnerIds: string[];
     assignedStaffIds: string[];
   },
@@ -171,6 +171,15 @@ async function checkPeople(
   const addedStaff = input.assignedStaffIds.filter((id) => !before?.assignedStaffIds.includes(id));
   if (addedStaff.some((id) => !isActive(id, ["JUNIOR", "SENIOR"]))) {
     errors.assignedStaffIds = ["Assigned staff must be active Juniors or Seniors."];
+  }
+
+  // Audit firms share the names map so the audit trail shows firm names.
+  const firmIds = [input.auditFirmId, before?.auditFirmId].filter((id): id is string => Boolean(id));
+  const firms = await tx.auditFirm.findMany({ where: { id: { in: firmIds } }, select: { id: true, name: true, active: true } });
+  for (const firm of firms) names.set(firm.id, firm.name);
+  const chosenFirm = firms.find((firm) => firm.id === input.auditFirmId);
+  if (input.auditFirmId && input.auditFirmId !== before?.auditFirmId && !chosenFirm?.active) {
+    errors.auditFirmId = ["Choose an audit firm from the list."];
   }
   return { errors, names };
 }
